@@ -25,3 +25,11 @@ build/
 
 # Logs
 *.log
+
+# Convex local data
+.convex/
+
+# Local environment variables
+.env
+.env.*
+!.env.example

@@ -10,14 +10,14 @@ Inspect the repository, verify the report schema using real workbooks, sign off 
 ## Task List
 
 ### 0.1 Repository Discovery
-- [ ] **0.1.1** Clone/inspect the repository root; list top-level directories and configuration files
-- [ ] **0.1.2** Identify package manager (npm/yarn/pnpm) and review `package.json` scripts, dependencies, and devDependencies
-- [ ] **0.1.3** Check for existing Vite/React/TypeScript configuration (`vite.config.ts`, `tsconfig.json`, `eslint.config.*`)
-- [ ] **0.1.4** Check for existing Convex configuration (`convex.json`, `convex/` directory structure)
-- [ ] **0.1.5** Check for existing Better Auth or other auth integration
-- [ ] **0.1.6** Review existing folder structure against PLAN.md §3 proposed layout; note deviations
-- [ ] **0.1.7** Document any existing CI/CD, linting, testing, or deployment configs
-- [ ] **0.1.8** Record environment variable patterns (`.env.example`, `.env.local`, Convex dashboard secrets)
+- [x] **0.1.1** Clone/inspect the repository root; list top-level directories and configuration files
+- [x] **0.1.2** Identify package manager (npm/yarn/pnpm) and review `package.json` scripts, dependencies, and devDependencies
+- [x] **0.1.3** Check for existing Vite/React/TypeScript configuration (`vite.config.ts`, `tsconfig.json`, `eslint.config.*`)
+- [x] **0.1.4** Check for existing Convex configuration (`convex.json`, `convex/` directory structure)
+- [x] **0.1.5** Check for existing Better Auth or other auth integration
+- [x] **0.1.6** Review existing folder structure against PLAN.md §3 proposed layout; note deviations
+- [x] **0.1.7** Document any existing CI/CD, linting, testing, or deployment configs
+- [x] **0.1.8** Record environment variable patterns (`.env.example`, `.env.local`, Convex dashboard secrets)
 
 ### 0.2 Report Schema Verification
 - [ ] **0.2.1** Locate the sample Excel files (`Rapport_TIKTAK_2026-10-25(2).xlsx`, `Rapport_TIKTAK_2026-10-25(3).xlsx`)
