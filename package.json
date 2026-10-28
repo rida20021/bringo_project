@@ -40,5 +40,9 @@
     "@testing-library/jest-dom": "^6.5.0",
     "jsdom": "^25.0.1",
     "convex": "^1.15.0"
+  },
+  "allowScripts": {
+    "esbuild@0.27.0": true,
+    "esbuild@0.21.5": true
   }
 }
