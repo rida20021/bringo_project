@@ -31,7 +31,7 @@ export default function SupervisorDashboard() {
           {
             label: 'Reste dû par les livreurs',
             value: formatMAD(kpis.cashOutstanding),
-            meta: `Sur ${formatMAD(kpis.totalCashDue)} dus en cash`,
+            meta: `Sur ${formatMAD(kpis.totalCashDue)} dûs en cash`,
             emphasis: true,
           },
           {
