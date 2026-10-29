@@ -20,26 +20,26 @@ Inspect the repository, verify the report schema using real workbooks, sign off 
 - [x] **0.1.8** Record environment variable patterns (`.env.example`, `.env.local`, Convex dashboard secrets)
 
 ### 0.2 Report Schema Verification
-- [ ] **0.2.1** Locate the sample Excel files (`Rapport_TIKTAK_2026-10-25(2).xlsx`, `Rapport_TIKTAK_2026-10-25(3).xlsx`)
-- [ ] **0.2.2** Open each workbook; record sheet names, exact header row values, column order, data types
-- [ ] **0.2.3** Count rows per sheet; note any merged cells, hidden rows, or formatting quirks
-- [ ] **0.2.4** Extract unique values for `payment_method` column; verify only `cash`, `card`, `online_payment` appear (or note others)
-- [ ] **0.2.5** Extract unique `shopper_name` values; count distinct riders; note spelling/case variations for same rider
-- [ ] **0.2.6** Validate `number` (command ID) uniqueness within each file and across files
-- [ ] **0.2.7** Parse `delivery_date_end` formats; confirm timezone interpretation (Africa/Casablanca)
-- [ ] **0.2.8** Verify `Total` column: numeric, non-negative, decimal precision (centimes vs dirhams)
-- [ ] **0.2.9** Create a Markdown fixture document (`tests/fixtures/report-schema.md`) documenting all findings
-- [ ] **0.2.10** Create sanitized JSON/CSV fixtures for unit tests (strip PII, keep structure)
+- [x] **0.2.1** Locate the sample Excel files (`Rapport_TIKTAK_2026-10-25(2).xlsx`, `Rapport_TIKTAK_2026-10-25(3).xlsx`) — located as `Rapport_TIKTAK_2026-10-25.xlsx` (+ duplicate copy) and `Rapport_TIKTAK_2026-10-24.xlsx` under `/home/ader/bringo-cash-recon/data` and `/home/ader/Downloads`
+- [x] **0.2.2** Open each workbook; record sheet names, exact header row values, column order, data types
+- [x] **0.2.3** Count rows per sheet; note any merged cells, hidden rows, or formatting quirks
+- [x] **0.2.4** Extract unique values for `payment_method` column; verify only `cash`, `card`, `online_payment` appear (or note others)
+- [x] **0.2.5** Extract unique `shopper_name` values; count distinct riders; note spelling/case variations for same rider
+- [x] **0.2.6** Validate `number` (command ID) uniqueness within each file and across files
+- [x] **0.2.7** Parse `delivery_date_end` formats; confirm timezone interpretation (Africa/Casablanca)
+- [x] **0.2.8** Verify `Total` column: numeric, non-negative, decimal precision (centimes vs dirhams)
+- [x] **0.2.9** Create a Markdown fixture document (`tests/fixtures/report-schema.md`) documenting all findings
+- [x] **0.2.10** Create sanitized JSON/CSV fixtures for unit tests (strip PII, keep structure)
 
 ### 0.3 Business Rule Sign-off (Confirmed Decisions)
-- [ ] **0.3.1** Confirm and document: Payment method rules (PRD §8.2 / PLAN §6)
+- [x] **0.3.1** Confirm and document: Payment method rules (PRD §8.2 / PLAN §6)
   - `cash` → rider collection → bank deposit (admin-approved receipt required)
   - `card` → TPE receipt evidence (admin-approved)
   - `online_payment` → excluded from reconciliation totals, preserved for audit
-- [ ] **0.3.2** Confirm and document: `Total` = exact amount to settle per order under its payment method; no fee/commission calc in MVP
-- [ ] **0.3.3** Confirm and document: Email provider = Gmail / Google Workspace
-- [ ] **0.3.4** Confirm and document: Admin approval mandatory before any receipt (deposit or TPE) satisfies reconciliation
-- [ ] **0.3.5** Record sign-off in `DECISIONS.md` with date, participants, and links to PRD/PLAN sections
+- [x] **0.3.2** Confirm and document: `Total` = exact amount to settle per order under its payment method; no fee/commission calc in MVP
+- [x] **0.3.3** Confirm and document: Email provider = Gmail / Google Workspace
+- [x] **0.3.4** Confirm and document: Admin approval mandatory before any receipt (deposit or TPE) satisfies reconciliation
+- [x] **0.3.5** Record sign-off in `DECISIONS.md` with date, participants, and links to PRD/PLAN sections
 
 ### 0.4 Remaining Operational Decisions (PRD §14 / PLAN §11)
 *For each item below: document the decision, rationale, and owner. If undecided, mark as "BLOCKED — needs stakeholder input"*
@@ -68,10 +68,10 @@ Inspect the repository, verify the report schema using real workbooks, sign off 
 - [ ] **0.5.9** Test: send a test email with XLSX attachment to the mailbox; verify push notification arrives and attachment can be downloaded via Gmail API
 
 ### 0.6 Documentation & Handoff
-- [ ] **0.6.1** Update `PLAN.md` with any discoveries that change scope/architecture (repository structure, existing patterns, schema deviations)
-- [ ] **0.6.2** Create `DECISIONS.md` consolidating all confirmed rules and open questions with status
+- [x] **0.6.1** Update `PLAN.md` with any discoveries that change scope/architecture (repository structure, existing patterns, schema deviations)
+- [x] **0.6.2** Create `DECISIONS.md` consolidating all confirmed rules and open questions with status
 - [ ] **0.6.3** Create `docs/gmail-integration.md` with setup steps, scopes, Pub/Sub config, renewal procedure
-- [ ] **0.6.4** Create `tests/fixtures/report-schema.md` with workbook analysis
+- [x] **0.6.4** Create `tests/fixtures/report-schema.md` with workbook analysis
 - [ ] **0.6.5** Brief the team/stakeholders: present findings, open decisions, and integration readiness
 
 ---

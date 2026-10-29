@@ -1,0 +1,298 @@
+delivery_date_end,number,payment_method,store_internal_name,store_external_id,company,shipping_method,shopper_name,Total
+2026-10-25,"458523",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_1,375.04
+2026-10-25,"458527",online_payment,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,176.7
+2026-10-25,"458528",card,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,289.75
+2026-10-25,"458529",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_4,106.6
+2026-10-25,"458531",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,773.3
+2026-10-25,"458532",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,419.5
+2026-10-25,"458533",cash,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_7,199.18
+2026-10-25,"458535",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,301.3
+2026-10-25,"458537",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_9,209.29
+2026-10-25,"458538",card,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_10,424.89
+2026-10-25,"458545",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,189.78
+2026-10-25,"458546",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,258.95
+2026-10-25,"458548",cash,"Carrefour Market Ibn Batouta",180,"TikTak Express","bringo",rider_13,819
+2026-10-25,"458551",online_payment,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,377.81
+2026-10-25,"458552",cash,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_15,185.76
+2026-10-25,"458553",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,235.5
+2026-10-25,"458558",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_17,263.59
+2026-10-25,"458559",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,120.33
+2026-10-25,"458562",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_19,175.79
+2026-10-25,"458563",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_1,123.25
+2026-10-25,"458564",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,1245.73
+2026-10-25,"458566",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_4,424.05
+2026-10-25,"458567",card,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,111.4
+2026-10-25,"458568",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,513.65
+2026-10-25,"458569",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,233.05
+2026-10-25,"458571",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_21,379.74
+2026-10-25,"458576",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,107.09
+2026-10-25,"458580",card,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,1106.48
+2026-10-25,"458582",card,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_19,623.25
+2026-10-25,"458585",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,207.25
+2026-10-25,"458589",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,527.13
+2026-10-25,"458590",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,473.4
+2026-10-25,"458594",online_payment,"Carrefour Market Mansouria",191,"TikTak Express","bringo",rider_25,196.42
+2026-10-25,"458597",cash,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_26,94.87
+2026-10-25,"458600",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_27,140.05
+2026-10-25,"458602",cash,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,128.65
+2026-10-25,"458605",cash,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_28,228.2
+2026-10-25,"458607",card,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,208.15
+2026-10-25,"458609",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_17,234.53
+2026-10-25,"458610",card,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,497.88
+2026-10-25,"458615",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_30,172.19
+2026-10-25,"458620",card,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,200.12
+2026-10-25,"458622",cash,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,120.2
+2026-10-25,"458623",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,257.95
+2026-10-25,"458628",cash,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,246.62
+2026-10-25,"458632",card,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,964.34
+2026-10-25,"458633",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,461.52
+2026-10-25,"458635",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_34,270.4
+2026-10-25,"458636",card,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,117.59
+2026-10-25,"458642",online_payment,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_26,442.11
+2026-10-25,"458645",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,288.95
+2026-10-25,"458646",online_payment,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,137.64
+2026-10-25,"458649",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,172.9
+2026-10-25,"458653",online_payment,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_7,455.83
+2026-10-25,"458654",cash,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,204.61
+2026-10-25,"458655",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,910.07
+2026-10-25,"458656",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,247.6
+2026-10-25,"458658",card,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,353.75
+2026-10-25,"458660",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,238.09
+2026-10-25,"458662",cash,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,106.5
+2026-10-25,"458664",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,210.13
+2026-10-25,"458668",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,138.33
+2026-10-25,"458669",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,158.09
+2026-10-25,"458671",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_30,328.59
+2026-10-25,"458672",cash,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,395.98
+2026-10-25,"458673",card,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,202.5
+2026-10-25,"458674",card,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,286.53
+2026-10-25,"458677",cash,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_38,222
+2026-10-25,"458679",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,430.85
+2026-10-25,"458680",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,274.9
+2026-10-25,"458682",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_9,1245.2
+2026-10-25,"458683",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,267.08
+2026-10-25,"458689",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_15,243.65
+2026-10-25,"458692",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,252.18
+2026-10-25,"458694",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,570.04
+2026-10-25,"458697",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_4,155.3
+2026-10-25,"458700",card,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_19,442.91
+2026-10-25,"458701",online_payment,"Carrefour Market Malraux",175,"TikTak Express","bringo",rider_40,114.1
+2026-10-25,"458702",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,404.2
+2026-10-25,"458705",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,321.83
+2026-10-25,"458707",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,241.15
+2026-10-25,"458709",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_4,135.92
+2026-10-25,"458714",online_payment,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_10,296.07
+2026-10-25,"458715",card,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,128.25
+2026-10-25,"458717",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,930.59
+2026-10-25,"458718",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_21,115.53
+2026-10-25,"458720",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,122.37
+2026-10-25,"458723",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_21,487.69
+2026-10-25,"458724",online_payment,"Carrefour Market Maamoura",179,"TikTak Express","bringo",rider_41,331.3
+2026-10-25,"458726",card,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,342.2
+2026-10-25,"458727",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_34,105.75
+2026-10-25,"458732",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,146.8
+2026-10-25,"458735",card,"Carrefour Market Bouznika",193,"TikTak Express","bringo",rider_42,108.08
+2026-10-25,"458737",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,139.68
+2026-10-25,"458738",card,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,289.44
+2026-10-25,"458743",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_15,390.16
+2026-10-25,"458744",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,432.63
+2026-10-25,"458745",online_payment,"Carrefour Market Ibn Batouta",180,"TikTak Express","bringo",rider_43,106.61
+2026-10-25,"458746",card,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,317.82
+2026-10-25,"458750",card,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,701.42
+2026-10-25,"458753",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_9,262.65
+2026-10-25,"458757",card,"Carrefour Market Mansouria",191,"TikTak Express","bringo",rider_44,242.9
+2026-10-25,"458760",online_payment,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,292.15
+2026-10-25,"458761",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,251.74
+2026-10-25,"458762",online_payment,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_26,77.9
+2026-10-25,"458767",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,215.07
+2026-10-25,"458768",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,587.13
+2026-10-25,"458772",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,215.71
+2026-10-25,"458776",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,290.5
+2026-10-25,"458777",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_34,122.03
+2026-10-25,"458783",card,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_30,442.92
+2026-10-25,"458785",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_27,538.52
+2026-10-25,"458786",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,164.5
+2026-10-25,"458790",card,"Carrefour Market Malabata",173,"TikTak Express","bringo",rider_45,125.38
+2026-10-25,"458794",card,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_7,301.34
+2026-10-25,"458795",cash,"Carrefour Market Bouznika",193,"TikTak Express","bringo",rider_46,102.48
+2026-10-25,"458798",online_payment,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,178.23
+2026-10-25,"458801",online_payment,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_7,421.28
+2026-10-25,"458804",online_payment,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,104.57
+2026-10-25,"458807",online_payment,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_28,774.19
+2026-10-25,"458809",card,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,218.08
+2026-10-25,"458814",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_4,370.37
+2026-10-25,"458815",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,207.3
+2026-10-25,"458816",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,163.28
+2026-10-25,"458823",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,238.68
+2026-10-25,"458824",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,127.78
+2026-10-25,"458826",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,207.18
+2026-10-25,"458830",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,176.85
+2026-10-25,"458832",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,242.12
+2026-10-25,"458833",online_payment,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,101.4
+2026-10-25,"458835",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,190.35
+2026-10-25,"458838",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_34,224.5
+2026-10-25,"458839",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,84.15
+2026-10-25,"458848",cash,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,614.5
+2026-10-25,"458850",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,97.85
+2026-10-25,"458851",cash,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,376.62
+2026-10-25,"458852",card,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,1154.72
+2026-10-25,"458853",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,267.65
+2026-10-25,"458857",online_payment,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,455.09
+2026-10-25,"458863",online_payment,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,1178.63
+2026-10-25,"458864",cash,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,104.75
+2026-10-25,"458866",online_payment,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,138.06
+2026-10-25,"458872",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,580.75
+2026-10-25,"458877",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,732.1
+2026-10-25,"458880",online_payment,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_10,201.61
+2026-10-25,"458882",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,294.5
+2026-10-25,"458884",cash,"Carrefour Market Malraux",175,"TikTak Express","bringo",rider_47,196.19
+2026-10-25,"458888",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,189.78
+2026-10-25,"458892",online_payment,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,844.95
+2026-10-25,"458893",online_payment,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_36,510.02
+2026-10-25,"458896",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,199.8
+2026-10-25,"458898",card,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,918.67
+2026-10-25,"458901",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,131.38
+2026-10-25,"458911",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,1092
+2026-10-25,"458912",card,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_7,453.35
+2026-10-25,"458913",card,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_26,244.75
+2026-10-25,"458922",card,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,107.65
+2026-10-25,"458924",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_17,357.76
+2026-10-25,"458925",cash,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,140.01
+2026-10-25,"458927",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_15,327.65
+2026-10-25,"458930",cash,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_7,56.5
+2026-10-25,"458932",cash,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_28,40.85
+2026-10-25,"458934",online_payment,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,335.31
+2026-10-25,"458938",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,341.79
+2026-10-25,"458940",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_27,705.27
+2026-10-25,"458942",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,197.35
+2026-10-25,"458943",online_payment,"Carrefour Market Maamoura",179,"TikTak Express","bringo",rider_41,249.19
+2026-10-25,"458946",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,112.55
+2026-10-25,"458947",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_19,392.38
+2026-10-25,"458949",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,99.16
+2026-10-25,"458951",card,"Carrefour Market Malabata",173,"TikTak Express","bringo",rider_45,440.91
+2026-10-25,"458952",card,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_48,530.49
+2026-10-25,"458955",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,270.89
+2026-10-25,"458956",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,426.56
+2026-10-25,"458958",cash,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_49,573.9
+2026-10-25,"458959",cash,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_48,169.8
+2026-10-25,"458961",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,782.82
+2026-10-25,"458968",online_payment,"Carrefour Market Palmeraie",186,"TikTak Express","bringo",rider_35,142.6
+2026-10-25,"458970",online_payment,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_26,200.46
+2026-10-25,"458971",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_4,94.8
+2026-10-25,"458977",online_payment,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_38,190.33
+2026-10-25,"458978",card,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_49,261.26
+2026-10-25,"458980",cash,"Carrefour Market Maamoura",179,"TikTak Express","bringo",rider_50,552.1
+2026-10-25,"458982",card,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,609.85
+2026-10-25,"458985",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,217.5
+2026-10-25,"458986",cash,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,203.37
+2026-10-25,"458987",cash,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_10,711.32
+2026-10-25,"458990",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,170.64
+2026-10-25,"458992",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,286.6
+2026-10-25,"458993",cash,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,244.62
+2026-10-25,"458995",online_payment,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,83.9
+2026-10-25,"458996",online_payment,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_38,290.58
+2026-10-25,"458998",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,159.15
+2026-10-25,"459000",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,112.78
+2026-10-25,"459001",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,453.98
+2026-10-25,"459003",cash,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_28,179.56
+2026-10-25,"459005",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,178
+2026-10-25,"459006",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,646.1
+2026-10-25,"459009",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_27,184.09
+2026-10-25,"459011",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,79.31
+2026-10-25,"459014",online_payment,"Carrefour Market Malabata",173,"TikTak Express","bringo",rider_51,492.77
+2026-10-25,"459018",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_52,213.55
+2026-10-25,"459019",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,247.15
+2026-10-25,"459020",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,370.55
+2026-10-25,"459024",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,170.35
+2026-10-25,"459026",cash,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,329.4
+2026-10-25,"459028",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,430.86
+2026-10-25,"459029",cash,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,137.53
+2026-10-25,"459033",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,330.9
+2026-10-25,"459034",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,323.09
+2026-10-25,"459036",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,367.12
+2026-10-25,"459038",cash,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,838.13
+2026-10-25,"459040",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,235.17
+2026-10-25,"459042",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,243.7
+2026-10-25,"459049",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_17,138.62
+2026-10-25,"459055",online_payment,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,100.95
+2026-10-25,"459056",online_payment,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,658.95
+2026-10-25,"459057",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,171.45
+2026-10-25,"459058",card,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_26,158.35
+2026-10-25,"459059",card,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_30,399.71
+2026-10-25,"459062",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,251.77
+2026-10-25,"459063",online_payment,"Carrefour Market Maamoura",179,"TikTak Express","bringo",rider_50,690.08
+2026-10-25,"459064",cash,"Carrefour Market Ibn Batouta",180,"TikTak Express","bringo",rider_13,176.35
+2026-10-25,"459065",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,1705.99
+2026-10-25,"459067",cash,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,199.38
+2026-10-25,"459071",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_52,955.58
+2026-10-25,"459076",online_payment,"Carrefour Market Maamoura",179,"TikTak Express","bringo",rider_41,216.2
+2026-10-25,"459078",online_payment,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_49,362.73
+2026-10-25,"459079",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,218.69
+2026-10-25,"459081",online_payment,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,139.5
+2026-10-25,"459082",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_27,178.25
+2026-10-25,"459089",cash,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,98.07
+2026-10-25,"459090",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,200.65
+2026-10-25,"459092",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_1,145
+2026-10-25,"459095",cash,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_18,219.8
+2026-10-25,"459096",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_52,501.25
+2026-10-25,"459097",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_1,172.55
+2026-10-25,"459098",card,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,238.1
+2026-10-25,"459099",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,195.45
+2026-10-25,"459100",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,201.45
+2026-10-25,"459104",cash,"Carrefour Market Maamoura",179,"TikTak Express","bringo",rider_50,531.24
+2026-10-25,"459105",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,202.86
+2026-10-25,"459107",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_39,440.5
+2026-10-25,"459108",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,705.73
+2026-10-25,"459110",cash,"Carrefour Market Cadi Ayyad",184,"TikTak Express","bringo",rider_38,138.48
+2026-10-25,"459113",card,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,212.45
+2026-10-25,"459116",cash,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_19,180.07
+2026-10-25,"459117",online_payment,"Carrefour Market Ibn Batouta",180,"TikTak Express","bringo",rider_43,572.28
+2026-10-25,"459118",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_30,223.83
+2026-10-25,"459120",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,122.54
+2026-10-25,"459121",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,388.95
+2026-10-25,"459122",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_36,107.25
+2026-10-25,"459123",online_payment,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_9,227.5
+2026-10-25,"459124",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_19,182.65
+2026-10-25,"459126",card,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,389.68
+2026-10-25,"459127",cash,"Carrefour Market Bouznika",193,"TikTak Express","bringo",rider_46,106.36
+2026-10-25,"459128",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,523.87
+2026-10-25,"459129",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,120.41
+2026-10-25,"459130",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,130.45
+2026-10-25,"459132",card,"Carrefour Market Mansouria",191,"TikTak Express","bringo",rider_44,116.26
+2026-10-25,"459133",online_payment,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_14,141.55
+2026-10-25,"459135",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,458
+2026-10-25,"459136",card,"Carrefour Market Lissasfa",165,"TikTak Express","bringo",rider_28,196.22
+2026-10-25,"459138",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,379.4
+2026-10-25,"459141",card,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_48,621.16
+2026-10-25,"459144",card,"Carrefour Market Anfa",74,"TikTak Express","bringo",rider_2,279.95
+2026-10-25,"459146",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,240.1
+2026-10-25,"459149",card,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_34,235.2
+2026-10-25,"459150",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_5,374.23
+2026-10-25,"459156",online_payment,"Carrefour Market Sable dâor",177,"TikTak Express","bringo",rider_31,301
+2026-10-25,"459157",card,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_22,292.63
+2026-10-25,"459159",online_payment,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_27,576.54
+2026-10-25,"459162",online_payment,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,436.86
+2026-10-25,"459163",card,"Carrefour Market Mansouria",191,"TikTak Express","bringo",rider_25,284.3
+2026-10-25,"459166",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,141.71
+2026-10-25,"459168",cash,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_34,626.02
+2026-10-25,"459172",card,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,264.15
+2026-10-25,"459174",cash,"Carrefour Market Massira",80,"TikTak Express","bringo",rider_23,219.05
+2026-10-25,"459175",card,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_15,166.07
+2026-10-25,"459176",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_37,82.26
+2026-10-25,"459180",cash,"Carrefour Market Saknia",171,"TikTak Express","bringo",rider_53,221.86
+2026-10-25,"459181",online_payment,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_12,202.91
+2026-10-25,"459182",online_payment,"Carrefour Market Souissi",176,"TikTak Express","bringo",rider_15,328.02
+2026-10-25,"459186",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_33,395.7
+2026-10-25,"459194",cash,"Carrefour Market Dar Bouazza",73,"TikTak Express","bringo",rider_3,112.84
+2026-10-25,"459197",cash,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_21,293.75
+2026-10-25,"459200",online_payment,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,138.65
+2026-10-25,"459205",online_payment,"Carrefour Market Yaacoub Al Mansour",71,"TikTak Express","bringo",rider_20,167.3
+2026-10-25,"459207",card,"Carrefour Market Wifak",76,"TikTak Express","bringo",rider_21,642.23
+2026-10-25,"459208",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_16,236.15
+2026-10-25,"459211",cash,"Carrefour Market Menara Mall",185,"TikTak Express","bringo",rider_11,101.9
+2026-10-25,"459212",card,"Carrefour Market Hassan 2",27,"TikTak Express","bringo",rider_48,161.97
+2026-10-25,"459213",online_payment,"Carrefour Market Ville Verte",63,"TikTak Express","bringo",rider_8,404
+2026-10-25,"459214",cash,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_29,206.51
+2026-10-25,"459215",card,"Carrefour Market Taddart",1,"TikTak Express","bringo",rider_32,117.65
+2026-10-25,"459217",online_payment,"Carrefour Gourmet VÃ©lodrome",68,"TikTak Express","bringo",rider_24,112
+2026-10-25,"459225",card,"Carrefour Market AL Qods",170,"TikTak Express","bringo",rider_6,207.88

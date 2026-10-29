@@ -202,6 +202,19 @@ Before editing implementation code:
     Resolve remaining operational details in PRD.md Section 14 before production (sender/subject pattern, cross-day allocations, rider identity mapping, languages, retention, alert recipients, invalid-row policy, and example arithmetic).
     Add or update this plan if discovery reveals a material change in scope or architecture.
 
+Milestone 0 — Repository discovery findings (logged 2026-10-28, Tasks 0.1–0.2)
+
+    Repository root inspected during Milestone 0 discovery.
+
+    - Vite + React + TypeScript scaffold present (`vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, `eslint.config.js`, `index.html`); package manager npm (no lockfile committed at root).
+    - Convex backend modules already scaffolded under `convex/` (auth, schema, users, riders, imports, orders, collections, deposits, evidence, reconciliation, audit, email, crons, settings); generated `convex/_generated/` output not yet generated.
+    - `convex.json` not yet present at repository root.
+    - Frontend feature areas present but empty (`src/app`, `src/components`, `src/features/{supervisor,admin,reconciliation}`, `src/lib`); `src/App.tsx` wires routes and components that are not yet implemented.
+    - Test directories present but empty (`tests/{fixtures,unit,integration,e2e}`); Vitest/testing-library/jsdom dependencies declared, runner config not yet added.
+    - No `.env.example` at root; `VITE_CONVEX_URL` consumed via `src/main.tsx` with localhost fallback; `.env*` gitignored.
+    - No CI/CD or deployment configuration present; ESLint configured, no CI pipeline yet.
+    - Report schema verified against real workbooks (`Rapport_TIKTAK_2026-10-25.xlsx`, `Rapport_TIKTAK_2026-10-24.xlsx`); findings and sanitized fixtures recorded in `tests/fixtures/report-schema.md`.
+
 3. Proposed architecture
 Bringo daily-report mailbox
         |
