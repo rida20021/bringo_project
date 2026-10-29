@@ -1,22 +1,35 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@convex-dev/auth/react';
+import { useConvexAuth } from 'convex/react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import Layout from './components/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
 import LoginPage from './features/auth/LoginPage';
+import SetupPage from './features/auth/SetupPage';
 import SupervisorDashboard from './features/supervisor/SupervisorDashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import NotFound from './components/NotFound';
 
-function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
-  const { isLoading, isAuthenticated } = useAuth();
+type Role = 'supervisor' | 'admin';
+
+function ProtectedRoute({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles: Role[];
+}) {
+  const { isLoading, isAuthenticated } = useConvexAuth();
   const identity = useQuery(api.users.getCurrentUser);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading || identity === undefined) return <LoadingSpinner />;
 
-  if (!isAuthenticated || !identity) {
+  if (!isAuthenticated || identity === null) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!identity.role) {
+    return <Navigate to="/setup" replace />;
   }
 
   if (!allowedRoles.includes(identity.role)) {
@@ -34,15 +47,31 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute allowedRoles={['admin']}>{children}</ProtectedRoute>;
 }
 
+function HomeRedirect() {
+  const identity = useQuery(api.users.getCurrentUser);
+
+  if (identity === undefined) return <LoadingSpinner />;
+  if (identity === null) return <Navigate to="/login" replace />;
+  if (!identity.role) return <Navigate to="/setup" replace />;
+
+  return (
+    <Navigate
+      to={identity.role === 'admin' ? '/admin/dashboard' : '/supervisor/dashboard'}
+      replace
+    />
+  );
+}
+
 export default function App() {
-  const { isLoading } = useAuth();
+  const { isLoading } = useConvexAuth();
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/unauthorized" element={<div className="unauthorized-page">Unauthorized</div>} />
+      <Route path="/setup" element={<SetupPage />} />
+      <Route path="/unauthorized" element={<div className="notice-page">Accès non autorisé.</div>} />
       <Route element={<Layout />}>
         <Route
           path="/supervisor/*"
@@ -66,7 +95,7 @@ export default function App() {
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
         </Route>
-        <Route path="/" element={<Navigate to="/supervisor/dashboard" replace />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
