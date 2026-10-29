@@ -21,6 +21,5 @@
       "@convex/*": ["convex/*"]
     }
   },
-  "include": ["src", "convex", "vite.config.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "convex", "vite.config.ts"]
 }
