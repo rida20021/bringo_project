@@ -1,5 +1,8 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import type { FilterBuilder, Expression } from 'convex/server';
+import type { DataModel } from './_generated/dataModel';
+import { requireAdmin, requireAppUser } from './lib/auth';
 
 export const createBankDeposit = mutation({
   args: {
@@ -10,13 +13,13 @@ export const createBankDeposit = mutation({
     allocations: v.array(v.object({ collectionId: v.id('cashCollections'), allocatedAmount: v.number() })),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Unauthorized');
+    const appUser = await requireAppUser(ctx);
 
     let totalAllocated = 0;
     for (const alloc of args.allocations) {
       const collection = await ctx.db.get(alloc.collectionId);
       if (!collection) throw new Error(`Collection ${alloc.collectionId} not found`);
+      if (collection.isReversal) throw new Error(`Collection ${alloc.collectionId} is a reversal`);
       totalAllocated += alloc.allocatedAmount;
     }
     if (totalAllocated > args.amount) throw new Error('Total allocated exceeds deposit amount');
@@ -25,7 +28,7 @@ export const createBankDeposit = mutation({
       amount: args.amount,
       bankReference: args.bankReference,
       depositDate: args.depositDate,
-      depositedBy: identity.subject,
+      depositedBy: appUser.userId,
       status: 'submitted',
       evidenceStorageIds: args.evidenceStorageIds,
       createdAt: Date.now(),
@@ -44,39 +47,76 @@ export const createBankDeposit = mutation({
 });
 
 export const reviewBankDeposit = mutation({
-  args: { depositId: v.id('bankDeposits'), action: v.union(v.literal('approve'), v.literal('reject')), reason: v.optional(v.string()) },
+  args: {
+    depositId: v.id('bankDeposits'),
+    action: v.union(v.literal('approve'), v.literal('reject')),
+    reason: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Unauthorized');
-    const profile = await ctx.db.query('userProfiles').withIndex('userId', (q) => q.eq('userId', identity.subject)).unique();
-    if (!profile || profile.role !== 'admin') throw new Error('Forbidden');
+    const appUser = await requireAdmin(ctx);
 
     const deposit = await ctx.db.get(args.depositId);
     if (!deposit) throw new Error('Deposit not found');
     if (deposit.status !== 'submitted') throw new Error('Deposit not in submitted state');
+    if (args.action === 'reject' && !args.reason?.trim()) throw new Error('A rejection reason is required');
 
     if (args.action === 'approve') {
-      await ctx.db.patch(args.depositId, { status: 'approved', reviewedBy: identity.subject, reviewedAt: Date.now() });
+      await ctx.db.patch(args.depositId, {
+        status: 'approved',
+        reviewedBy: appUser.userId,
+        reviewedAt: Date.now(),
+      });
     } else {
-      await ctx.db.patch(args.depositId, { status: 'rejected', reviewedBy: identity.subject, reviewedAt: Date.now(), rejectionReason: args.reason });
+      await ctx.db.patch(args.depositId, {
+        status: 'rejected',
+        reviewedBy: appUser.userId,
+        reviewedAt: Date.now(),
+        rejectionReason: args.reason,
+      });
     }
   },
 });
 
 export const getBankDeposits = query({
-  args: { status: v.optional(v.union(v.literal('submitted'), v.literal('approved'), v.literal('rejected'))), fromDate: v.optional(v.number()), toDate: v.optional(v.number()) },
+  args: {
+    status: v.optional(v.union(v.literal('submitted'), v.literal('approved'), v.literal('rejected'))),
+    fromDate: v.optional(v.number()),
+    toDate: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
-    let q = ctx.db.query('bankDeposits');
-    if (args.status) q = q.withIndex('status', (q) => q.eq('status', args.status));
-    if (args.fromDate) q = q.filter((q) => q.gte(q.field('depositDate'), args.fromDate));
-    if (args.toDate) q = q.filter((q) => q.lte(q.field('depositDate'), args.toDate));
-    return q.order('desc').collect();
+    await requireAppUser(ctx);
+    const limit = Math.min(args.limit ?? 200, 500);
+    const fromDate = args.fromDate;
+    const toDate = args.toDate;
+
+    const applyDateFilters = (q: FilterBuilder<DataModel['bankDeposits']>) => {
+      const conditions: Expression<boolean>[] = [];
+      if (fromDate !== undefined) conditions.push(q.gte(q.field('depositDate'), fromDate));
+      if (toDate !== undefined) conditions.push(q.lte(q.field('depositDate'), toDate));
+      return conditions.length === 0 ? true : conditions.length === 1 ? conditions[0] : q.and(...conditions);
+    };
+
+    if (args.status) {
+      return ctx.db
+        .query('bankDeposits')
+        .withIndex('status', (q) => q.eq('status', args.status!))
+        .filter(applyDateFilters)
+        .order('desc')
+        .take(limit);
+    }
+
+    return ctx.db.query('bankDeposits').filter(applyDateFilters).order('desc').take(limit);
   },
 });
 
 export const getDepositAllocations = query({
   args: { depositId: v.id('bankDeposits') },
   handler: async (ctx, args) => {
-    return ctx.db.query('depositAllocations').withIndex('depositId', (q) => q.eq('depositId', args.depositId)).collect();
+    await requireAppUser(ctx);
+    return ctx.db
+      .query('depositAllocations')
+      .withIndex('depositId', (q) => q.eq('depositId', args.depositId))
+      .collect();
   },
 });

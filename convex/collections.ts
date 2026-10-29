@@ -1,5 +1,8 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import type { FilterBuilder, Expression } from 'convex/server';
+import type { DataModel } from './_generated/dataModel';
+import { requireAppUser } from './lib/auth';
 
 export const createCashCollection = mutation({
   args: {
@@ -11,13 +14,16 @@ export const createCashCollection = mutation({
     allocations: v.array(v.object({ orderId: v.id('orders'), allocatedAmount: v.number() })),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Unauthorized');
+    const appUser = await requireAppUser(ctx);
+
+    const rider = await ctx.db.get(args.riderId);
+    if (!rider) throw new Error(`Rider ${args.riderId} not found`);
 
     let totalAllocated = 0;
     for (const alloc of args.allocations) {
       const order = await ctx.db.get(alloc.orderId);
       if (!order) throw new Error(`Order ${alloc.orderId} not found`);
+      if (order.riderId !== args.riderId) throw new Error(`Order ${alloc.orderId} belongs to a different rider`);
       if (order.paymentMethod !== 'cash') throw new Error(`Order ${alloc.orderId} is not a cash order`);
       if (order.eligibilityStatus !== 'eligible') throw new Error(`Order ${alloc.orderId} not eligible`);
       totalAllocated += alloc.allocatedAmount;
@@ -28,7 +34,7 @@ export const createCashCollection = mutation({
       riderId: args.riderId,
       amount: args.amount,
       collectedAt: args.collectedAt,
-      collectedBy: identity.subject,
+      collectedBy: appUser.userId,
       note: args.note,
       sourceReportDate: args.sourceReportDate,
       isReversal: false,
@@ -48,19 +54,45 @@ export const createCashCollection = mutation({
 });
 
 export const getCashCollections = query({
-  args: { riderId: v.optional(v.id('riders')), fromDate: v.optional(v.number()), toDate: v.optional(v.number()) },
+  args: {
+    riderId: v.optional(v.id('riders')),
+    fromDate: v.optional(v.number()),
+    toDate: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
-    let q = ctx.db.query('cashCollections').filter((q) => q.eq(q.field('isReversal'), false));
-    if (args.riderId) q = q.withIndex('riderId', (q) => q.eq('riderId', args.riderId));
-    if (args.fromDate) q = q.filter((q) => q.gte(q.field('collectedAt'), args.fromDate));
-    if (args.toDate) q = q.filter((q) => q.lte(q.field('collectedAt'), args.toDate));
-    return q.order('desc').collect();
+    await requireAppUser(ctx);
+    const limit = Math.min(args.limit ?? 200, 500);
+    const fromDate = args.fromDate;
+    const toDate = args.toDate;
+
+    const applyFilters = (q: FilterBuilder<DataModel['cashCollections']>) => {
+      const conditions: Expression<boolean>[] = [q.eq(q.field('isReversal'), false)];
+      if (fromDate !== undefined) conditions.push(q.gte(q.field('collectedAt'), fromDate));
+      if (toDate !== undefined) conditions.push(q.lte(q.field('collectedAt'), toDate));
+      return conditions.length === 1 ? conditions[0] : q.and(...conditions);
+    };
+
+    if (args.riderId) {
+      return ctx.db
+        .query('cashCollections')
+        .withIndex('riderId', (q) => q.eq('riderId', args.riderId!))
+        .filter(applyFilters)
+        .order('desc')
+        .take(limit);
+    }
+
+    return ctx.db.query('cashCollections').filter(applyFilters).order('desc').take(limit);
   },
 });
 
 export const getCollectionAllocations = query({
   args: { collectionId: v.id('cashCollections') },
   handler: async (ctx, args) => {
-    return ctx.db.query('cashCollectionAllocations').withIndex('collectionId', (q) => q.eq('collectionId', args.collectionId)).collect();
+    await requireAppUser(ctx);
+    return ctx.db
+      .query('cashCollectionAllocations')
+      .withIndex('collectionId', (q) => q.eq('collectionId', args.collectionId))
+      .collect();
   },
 });

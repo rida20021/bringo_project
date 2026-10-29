@@ -1,7 +1,10 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
+import { authTables } from '@convex-dev/auth/server';
 
 export default defineSchema({
+  ...authTables,
+
   users: defineTable({
     email: v.string(),
     name: v.optional(v.string()),
@@ -10,7 +13,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
-  }).index('email', ['email']),
+  }).index('email', ['email'])
+    .index('phone', ['phone']),
 
   userProfiles: defineTable({
     userId: v.id('users'),
@@ -54,6 +58,7 @@ export default defineSchema({
     storageId: v.optional(v.id('_storage')),
     createdBy: v.optional(v.id('users')),
   }).index('gmailMessageId', ['gmailMessageId'])
+    .index('attachmentHash', ['attachmentHash'])
     .index('reportDate', ['reportDate']),
 
   sourceRows: defineTable({
@@ -219,5 +224,9 @@ export default defineSchema({
     importSLAMinutes: v.number(),
     updatedAt: v.number(),
     updatedBy: v.id('users'),
+    syncCursor: v.optional(v.string()),
+    gmailAccessToken: v.optional(v.string()),
+    gmailRefreshToken: v.optional(v.string()),
+    gmailTokenExpiresAt: v.optional(v.number()),
   }),
 });

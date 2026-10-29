@@ -1,6 +1,7 @@
-import { mutation, query, internalMutation } from './_generated/server';
+import { query, internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
-import { generateId } from 'convex/server';
+import type { Id } from './_generated/dataModel';
+import { requireAdmin } from './lib/auth';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'card' | 'online_payment' | 'unknown'> = {
   cash: 'cash',
@@ -13,6 +14,7 @@ function normalizePaymentMethod(raw: string): 'cash' | 'card' | 'online_payment'
   return PAYMENT_METHOD_MAP[key] || 'unknown';
 }
 
+/** Parse an amount expressed in MAD and return integer centimes. */
 function parseAmount(value: unknown): number | null {
   if (typeof value === 'number') return Math.round(value * 100);
   if (typeof value === 'string') {
@@ -39,7 +41,17 @@ function parseDate(value: unknown): number | null {
   return null;
 }
 
-export const createImportBatch = mutation({
+export const getImportBatchByHash = internalQuery({
+  args: { hash: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query('importBatches')
+      .withIndex('attachmentHash', (q) => q.eq('attachmentHash', args.hash))
+      .first();
+  },
+});
+
+export const createImportBatch = internalMutation({
   args: {
     gmailMessageId: v.string(),
     gmailHistoryId: v.optional(v.string()),
@@ -49,8 +61,12 @@ export const createImportBatch = mutation({
     storageId: v.optional(v.id('_storage')),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.query('importBatches').withIndex('gmailMessageId', (q) => q.eq('gmailMessageId', args.gmailMessageId)).unique();
-    if (existing) return { batchId: existing._id, isDuplicate: true };
+    const existingByMessage = await ctx.db
+      .query('importBatches')
+      .withIndex('gmailMessageId', (q) => q.eq('gmailMessageId', args.gmailMessageId))
+      .unique();
+    if (existingByMessage) return { batchId: existingByMessage._id, isDuplicate: true };
+
     const batchId = await ctx.db.insert('importBatches', {
       ...args,
       receivedAt: Date.now(),
@@ -66,14 +82,17 @@ export const createImportBatch = mutation({
   },
 });
 
-export const processImportBatch = mutation({
+export const processImportBatch = internalMutation({
   args: { batchId: v.id('importBatches'), rows: v.array(v.any()) },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get(args.batchId);
     if (!batch) throw new Error('Batch not found');
     if (batch.status !== 'processing') throw new Error('Batch not in processing state');
 
-    let accepted = 0, rejected = 0, duplicate = 0, conflict = 0;
+    let accepted = 0;
+    let rejected = 0;
+    let duplicate = 0;
+    let conflict = 0;
     const errors: string[] = [];
 
     for (let i = 0; i < args.rows.length; i++) {
@@ -94,15 +113,33 @@ export const processImportBatch = mutation({
       const rowErrors: string[] = [];
       const warnings: string[] = [];
 
-      if (!commandId) { validationState = 'invalid'; rowErrors.push('Missing command ID'); }
-      if (!rawRiderName) { validationState = 'invalid'; rowErrors.push('Missing rider name'); }
-      if (paymentMethod === 'unknown') { validationState = 'invalid'; rowErrors.push(`Unknown payment method: ${rawPaymentMethod}`); }
-      if (amount === null || amount < 0) { validationState = 'invalid'; rowErrors.push('Invalid amount'); }
-      if (!deliveryDate) { validationState = 'invalid'; rowErrors.push('Invalid date'); }
+      if (!commandId) {
+        validationState = 'invalid';
+        rowErrors.push('Missing command ID');
+      }
+      if (!rawRiderName) {
+        validationState = 'invalid';
+        rowErrors.push('Missing rider name');
+      }
+      if (paymentMethod === 'unknown') {
+        validationState = 'invalid';
+        rowErrors.push(`Unknown payment method: ${rawPaymentMethod}`);
+      }
+      if (amount === null || amount < 0) {
+        validationState = 'invalid';
+        rowErrors.push('Invalid amount');
+      }
+      if (!deliveryDate) {
+        validationState = 'invalid';
+        rowErrors.push('Invalid date');
+      }
 
-      let linkedOrderId: string | undefined;
+      let linkedOrderId: Id<'orders'> | undefined;
       if (validationState === 'valid') {
-        const existingOrder = await ctx.db.query('orders').withIndex('commandId', (q) => q.eq('commandId', commandId)).unique();
+        const existingOrder = await ctx.db
+          .query('orders')
+          .withIndex('commandId', (q) => q.eq('commandId', commandId))
+          .unique();
         if (existingOrder) {
           const sameAmount = existingOrder.amount === amount;
           const sameRider = existingOrder.rawRiderName === rawRiderName;
@@ -114,7 +151,9 @@ export const processImportBatch = mutation({
           } else {
             validationState = 'conflict';
             conflict++;
-            rowErrors.push(`Conflicts with existing order ${commandId}: amount=${existingOrder.amount/100}, rider=${existingOrder.rawRiderName}, method=${existingOrder.paymentMethod}`);
+            rowErrors.push(
+              `Conflicts with existing order ${commandId}: amount=${existingOrder.amount / 100}, rider=${existingOrder.rawRiderName}, method=${existingOrder.paymentMethod}`
+            );
           }
         }
       }
@@ -122,7 +161,24 @@ export const processImportBatch = mutation({
       if (validationState === 'invalid') rejected++;
       else if (validationState === 'valid') accepted++;
 
-      const riderId = validationState !== 'invalid' ? await ctx.runMutation(internalMutation.riders.getOrCreateRider, { rawName: rawRiderName }) : null;
+      let riderId = null;
+      if (validationState !== 'invalid') {
+        const existingRider = await ctx.db
+          .query('riders')
+          .withIndex('canonicalName', (q) => q.eq('canonicalName', rawRiderName))
+          .unique();
+        if (existingRider) {
+          riderId = existingRider._id;
+        } else {
+          riderId = await ctx.db.insert('riders', {
+            canonicalName: rawRiderName,
+            aliases: [rawRiderName],
+            isActive: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        }
+      }
 
       const sourceRowId = await ctx.db.insert('sourceRows', {
         importBatchId: args.batchId,
@@ -131,11 +187,12 @@ export const processImportBatch = mutation({
         validationState,
         errors: rowErrors.length > 0 ? rowErrors : undefined,
         warnings: warnings.length > 0 ? warnings : undefined,
-        linkedOrderId: linkedOrderId as any,
+        linkedOrderId,
       });
 
-      if (validationState === 'valid' && riderId) {
-        const eligibilityStatus = paymentMethod === 'online_payment' ? 'excluded_payment_method' : 'eligible';
+      if (validationState === 'valid' && riderId && paymentMethod !== 'unknown') {
+        const eligibilityStatus =
+          paymentMethod === 'online_payment' ? 'excluded_payment_method' : 'eligible';
         const orderId = await ctx.db.insert('orders', {
           commandId,
           deliveryDate: deliveryDate!,
@@ -143,7 +200,7 @@ export const processImportBatch = mutation({
           rawRiderName,
           paymentMethod,
           amount: amount!,
-          store: row.store ? String(row.store) : undefined,
+          store: row.store_internal_name ? String(row.store_internal_name) : undefined,
           company: row.company ? String(row.company) : undefined,
           shippingInfo: row,
           sourceRowId,
@@ -175,22 +232,35 @@ export const processImportBatch = mutation({
 export const getImportBatches = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    return ctx.db.query('importBatches').order('desc').take(args.limit || 50).collect();
+    await requireAdmin(ctx);
+    return ctx.db
+      .query('importBatches')
+      .order('desc')
+      .take(Math.min(args.limit ?? 50, 200));
   },
 });
 
 export const getImportBatch = query({
   args: { batchId: v.id('importBatches') },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return ctx.db.get(args.batchId);
   },
 });
 
 export const getSourceRows = query({
-  args: { batchId: v.id('importBatches'), state: v.optional(v.union(v.literal('valid'), v.literal('invalid'), v.literal('duplicate'), v.literal('conflict'))) },
+  args: {
+    batchId: v.id('importBatches'),
+    state: v.optional(
+      v.union(v.literal('valid'), v.literal('invalid'), v.literal('duplicate'), v.literal('conflict'))
+    ),
+  },
   handler: async (ctx, args) => {
-    let q = ctx.db.query('sourceRows').withIndex('importBatchId', (q) => q.eq('importBatchId', args.batchId));
-    if (args.state) q = q.filter((q) => q.eq(q.field('validationState'), args.state));
-    return q.collect();
+    await requireAdmin(ctx);
+    const rows = await ctx.db
+      .query('sourceRows')
+      .withIndex('importBatchId', (q) => q.eq('importBatchId', args.batchId))
+      .collect();
+    return args.state ? rows.filter((row) => row.validationState === args.state) : rows;
   },
 });

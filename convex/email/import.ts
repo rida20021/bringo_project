@@ -1,9 +1,41 @@
-import { internalMutation, internalQuery, internalAction } from './_generated/server';
+import { internalAction } from '../_generated/server';
+import type { ActionCtx } from '../_generated/server';
 import { v } from 'convex/values';
+import { internal } from '../_generated/api'; // <-- The correct way to import internal APIs
+import type { Id } from '../_generated/dataModel';
+
+type ProcessGmailMessageResult = {
+  success: boolean;
+  reason?: string;
+  duplicate?: boolean;
+  batchId?: Id<'importBatches'>;
+};
+
+type GmailMessagePart = {
+  filename?: string;
+  body?: { attachmentId?: string; size?: number; data?: string };
+  parts?: GmailMessagePart[];
+};
+
+type GmailMessage = {
+  id?: string;
+  threadId?: string;
+  labelIds?: string[];
+  payload?: GmailMessagePart;
+};
+
+type GmailHistoryResponse = {
+  history?: Array<{
+    id?: string;
+    messagesAdded?: Array<{ message: GmailMessage }>;
+  }>;
+  nextPageToken?: string;
+  historyId?: string;
+};
 
 export const processGmailMessage = internalAction({
   args: { messageId: v.string(), historyId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ProcessGmailMessageResult> => {
     const accessToken = await getValidAccessToken(ctx);
     if (!accessToken) throw new Error('No valid Gmail access token');
 
@@ -17,13 +49,16 @@ export const processGmailMessage = internalAction({
     if (!attachmentData) return { success: false, reason: 'Failed to download attachment' };
 
     const hash = await hashBuffer(attachmentData);
-    const existing = await ctx.runQuery(internalQuery.imports.getImportBatchByHash, { hash });
+    
+    // FIX: Use internal.imports instead of internalQuery.imports
+    const existing: { _id: Id<'importBatches'> } | null = await ctx.runQuery(internal.imports.getImportBatchByHash, { hash });
     if (existing) return { success: true, duplicate: true, batchId: existing._id };
 
     const storageId = await ctx.storage.store(new Blob([attachmentData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     const reportDate = parseReportDateFromFilename(attachment.filename) || Date.now();
 
-    const batchResult = await ctx.runMutation(internalMutation.imports.createImportBatch, {
+    // FIX: Use internal.imports instead of internalMutation.imports
+    const batchResult: { batchId: Id<'importBatches'>; isDuplicate: boolean } = await ctx.runMutation(internal.imports.createImportBatch, {
       gmailMessageId: args.messageId,
       gmailHistoryId: args.historyId,
       attachmentName: attachment.filename,
@@ -35,7 +70,7 @@ export const processGmailMessage = internalAction({
     if (batchResult.isDuplicate) return { success: true, duplicate: true, batchId: batchResult.batchId };
 
     const rows = parseXlsxBuffer(attachmentData);
-    await ctx.runMutation(internalMutation.imports.processImportBatch, { batchId: batchResult.batchId, rows });
+    await ctx.runMutation(internal.imports.processImportBatch, { batchId: batchResult.batchId, rows });
 
     return { success: true, batchId: batchResult.batchId };
   },
@@ -43,7 +78,7 @@ export const processGmailMessage = internalAction({
 
 export const syncGmailHistory = internalAction({
   args: { startHistoryId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     const accessToken = await getValidAccessToken(ctx);
     if (!accessToken) throw new Error('No valid Gmail access token');
 
@@ -56,11 +91,16 @@ export const syncGmailHistory = internalAction({
 
       for (const record of history.history || []) {
         for (const message of record.messagesAdded || []) {
+          const messageId = message.message.id;
+          if (!messageId) continue;
           const labels = message.message.labelIds || [];
-          const settings = await ctx.runQuery(internalQuery.settings.getImportSettings);
+          // FIX: Use internal.settings
+          const settings = await ctx.runQuery(internal.settings.getImportSettings);
+          
           if (settings && labels.some((l: string) => settings.gmailLabel && l === settings.gmailLabel)) {
-            await ctx.runAction(internalAction.email.import.processGmailMessage, {
-              messageId: message.message.id,
+            // FIX: Use internal.email.import
+            await ctx.runAction(internal.email.import.processGmailMessage, {
+              messageId,
               historyId: historyId,
             });
           }
@@ -68,26 +108,60 @@ export const syncGmailHistory = internalAction({
       }
 
       pageToken = history.nextPageToken;
-      historyId = history.historyId;
+      if (history.historyId) historyId = history.historyId;
     } while (pageToken);
 
-    await ctx.runMutation(internalMutation.settings.updateSyncCursor, { historyId });
+    // FIX: Use internal.settings
+    await ctx.runMutation(internal.settings.updateSyncCursor, { historyId });
   },
 });
 
-async function getValidAccessToken(ctx: any): Promise<string | null> {
-  const tokenDoc = await ctx.db.query('gmailTokens').first();
+async function getValidAccessToken(ctx: ActionCtx): Promise<string | null> {
+  // Actions cannot touch ctx.db directly; settings are read/written via functions.
+  const tokenDoc = await ctx.runQuery(internal.settings.getGmailToken);
+
   if (!tokenDoc) return null;
   if (tokenDoc.expiresAt > Date.now() + 60000) return tokenDoc.accessToken;
+
+  if (!tokenDoc.refreshToken) return null;
   const refreshed = await refreshAccessToken(tokenDoc.refreshToken);
+
   if (refreshed) {
-    await ctx.db.patch(tokenDoc._id, { accessToken: refreshed.accessToken, expiresAt: Date.now() + refreshed.expiresIn * 1000 });
+    await ctx.runMutation(internal.settings.updateGmailToken, {
+      id: tokenDoc._id,
+      accessToken: refreshed.accessToken,
+      expiresAt: Date.now() + refreshed.expiresIn * 1000,
+    });
     return refreshed.accessToken;
   }
   return null;
 }
 
-async function fetchGmailMessage(accessToken: string, messageId: string): Promise<any> {
+async function refreshAccessToken(
+  refreshToken: string
+): Promise<{ accessToken: string; expiresIn: number } | null> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as { access_token?: string; expires_in?: number };
+  if (!data.access_token || !data.expires_in) return null;
+  return { accessToken: data.access_token, expiresIn: data.expires_in };
+}
+
+async function fetchGmailMessage(accessToken: string, messageId: string): Promise<GmailMessage | null> {
   const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -107,7 +181,7 @@ async function fetchGmailAttachment(accessToken: string, messageId: string, atta
   return bytes.buffer;
 }
 
-async function fetchGmailHistory(accessToken: string, startHistoryId: string, pageToken?: string): Promise<any> {
+async function fetchGmailHistory(accessToken: string, startHistoryId: string, pageToken?: string): Promise<GmailHistoryResponse | null> {
   const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/history');
   url.searchParams.set('startHistoryId', startHistoryId);
   if (pageToken) url.searchParams.set('pageToken', pageToken);
@@ -116,7 +190,7 @@ async function fetchGmailHistory(accessToken: string, startHistoryId: string, pa
   return res.json();
 }
 
-function findXlsxAttachment(message: any): { attachmentId: string; filename: string } | null {
+function findXlsxAttachment(message: GmailMessage): { attachmentId: string; filename: string } | null {
   const parts = message.payload?.parts || [];
   for (const part of parts) {
     if (part.filename?.endsWith('.xlsx') && part.body?.attachmentId) {
@@ -141,7 +215,7 @@ function parseReportDateFromFilename(filename: string): number | null {
   return null;
 }
 
-function parseXlsxBuffer(buffer: ArrayBuffer): any[] {
+function parseXlsxBuffer(_buffer: ArrayBuffer): Record<string, unknown>[] {
   // This would use xlsx library in real implementation
   // For now return empty - actual parsing happens in the import mutation
   return [];

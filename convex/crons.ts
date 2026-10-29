@@ -1,14 +1,19 @@
 import { cronJobs } from 'convex/server';
 import { internalAction } from './_generated/server';
+import { internal } from './_generated/api';
 
 export const scheduledGmailSync = internalAction({
   args: {},
   handler: async (ctx) => {
-    const settings = await ctx.runQuery(internalQuery.settings.getImportSettings);
+    const settings = await ctx.runQuery(internal.settings.getImportSettings);
     if (!settings?.syncCursor) return;
 
-    await ctx.runAction(internalAction.email.import.syncGmailHistory, { startHistoryId: settings.syncCursor });
+    await ctx.runAction(internal.email.import.syncGmailHistory, { startHistoryId: settings.syncCursor });
   },
 });
 
-cronJobs.everyMinute('scheduled-gmail-sync', scheduledGmailSync);
+const crons = cronJobs();
+
+crons.interval('scheduled-gmail-sync', { minutes: 1 }, internal.crons.scheduledGmailSync);
+
+export default crons;
