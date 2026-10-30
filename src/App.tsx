@@ -8,9 +8,17 @@ import LoginPage from './features/auth/LoginPage';
 import SetupPage from './features/auth/SetupPage';
 import SupervisorDashboard from './features/supervisor/SupervisorDashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
+import MarketsPage from './features/admin/MarketsPage';
+import RiderHome from './features/rider/RiderHome';
 import NotFound from './components/NotFound';
 
-type Role = 'supervisor' | 'admin';
+type Role = 'supervisor' | 'admin' | 'rider';
+
+const homeByRole: Record<Role, string> = {
+  admin: '/admin/dashboard',
+  supervisor: '/supervisor/dashboard',
+  rider: '/rider',
+};
 
 function ProtectedRoute({
   children,
@@ -33,7 +41,7 @@ function ProtectedRoute({
   }
 
   if (!allowedRoles.includes(identity.role)) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to={homeByRole[identity.role]} replace />;
   }
 
   return <>{children}</>;
@@ -47,6 +55,10 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute allowedRoles={['admin']}>{children}</ProtectedRoute>;
 }
 
+function RiderRoute({ children }: { children: React.ReactNode }) {
+  return <ProtectedRoute allowedRoles={['rider']}>{children}</ProtectedRoute>;
+}
+
 function HomeRedirect() {
   const identity = useQuery(api.users.getCurrentUser);
 
@@ -54,12 +66,7 @@ function HomeRedirect() {
   if (identity === null) return <Navigate to="/login" replace />;
   if (!identity.role) return <Navigate to="/setup" replace />;
 
-  return (
-    <Navigate
-      to={identity.role === 'admin' ? '/admin/dashboard' : '/supervisor/dashboard'}
-      replace
-    />
-  );
+  return <Navigate to={homeByRole[identity.role]} replace />;
 }
 
 export default function App() {
@@ -71,6 +78,14 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/setup" element={<SetupPage />} />
+      <Route
+        path="/rider"
+        element={
+          <RiderRoute>
+            <RiderHome />
+          </RiderRoute>
+        }
+      />
       <Route path="/unauthorized" element={<div className="notice-page">Accès non autorisé.</div>} />
       <Route element={<Layout />}>
         <Route
@@ -94,6 +109,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="markets" element={<MarketsPage />} />
         </Route>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />

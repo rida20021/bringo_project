@@ -21,7 +21,12 @@ export default function Layout() {
   const displayName = user?.displayName ?? user?.email ?? 'Utilisateur';
   const navItems: NavItem[] = [
     { to: '/supervisor/dashboard', label: 'Tableau de bord' },
-    ...(isAdmin ? [{ to: '/admin/dashboard', label: 'Vue d’ensemble' }] : []),
+    ...(isAdmin
+      ? [
+          { to: '/admin/dashboard', label: 'Vue d’ensemble' },
+          { to: '/admin/markets', label: 'Marchés' },
+        ]
+      : []),
   ];
 
   const handleSignOut = async () => {

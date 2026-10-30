@@ -18,12 +18,21 @@ export default defineSchema({
 
   userProfiles: defineTable({
     userId: v.id('users'),
-    role: v.union(v.literal('supervisor'), v.literal('admin')),
+    role: v.union(v.literal('supervisor'), v.literal('admin'), v.literal('rider')),
     displayName: v.string(),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('userId', ['userId']),
+
+  markets: defineTable({
+    name: v.string(),
+    externalId: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('externalId', ['externalId'])
+    .index('name', ['name']),
 
   riders: defineTable({
     canonicalName: v.string(),

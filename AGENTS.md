@@ -1,13 +1,20 @@
-<!-- convex-ai-start -->
+# OpenCode Agent Instructions
 
-This project uses [Convex](https://convex.dev) as its backend.
+## 🛠️ Tech Stack
+- Frontend: React, TypeScript, Vite, Tailwind CSS.
+- Backend: Convex (DB, Auth, File Storage).
+- Testing: Vitest.
 
-When working on Convex code, **always read
-`convex/_generated/ai/guidelines.md` first** for important guidelines on
-how to correctly use Convex APIs and patterns. The file contains rules that
-override what you may have learned about Convex from training data.
+## 🎨 Brand Colors
+- Primary: `#4a397e` (Deep Purple - Sidebars, Headers, Text)
+- Accent: `#eab818` (Gold - Buttons, Highlights)
 
-Convex agent skills for common tasks can be installed by running
-`npx convex ai-files install`.
+## 🚫 CRITICAL RULES
+1. **DO NOT RUN SERVERS:** Never run `npm run dev`, `npm run build`, or `npx convex dev`. I run these in my own terminal tabs. If you run them, the laptop will freeze.
+2. **NO HALLUCINATIONS:** If you need to use a cron job, use `crons.interval(...)`. Never use `everyMinute`.
+3. **ACTION DB ACCESS:** Remember that Convex `actions` cannot use `ctx.db`. You must use `ctx.runQuery` and `ctx.runMutation`.
 
-<!-- convex-ai-end -->
+## 📂 Architecture Guidelines
+- All backend code goes in `convex/`.
+- All frontend components go in `src/`.
+- Always read `PRD.md` and `TASKS.md` before starting a new task.

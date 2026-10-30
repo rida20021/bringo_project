@@ -32,7 +32,7 @@ export const createUser = mutation({
   args: {
     userId: v.id('users'),
     email: v.string(),
-    role: v.union(v.literal('supervisor'), v.literal('admin')),
+    role: v.union(v.literal('supervisor'), v.literal('admin'), v.literal('rider')),
     displayName: v.string(),
   },
   handler: async (ctx, args) => {
@@ -63,7 +63,7 @@ export const createUser = mutation({
 export const updateUserRole = mutation({
   args: {
     userId: v.id('users'),
-    role: v.union(v.literal('supervisor'), v.literal('admin')),
+    role: v.union(v.literal('supervisor'), v.literal('admin'), v.literal('rider')),
   },
   handler: async (ctx, args) => {
     const appUser = await requireAdmin(ctx);

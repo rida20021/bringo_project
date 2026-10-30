@@ -23,7 +23,7 @@ function makeT() {
 
 async function createProfile(
   t: T,
-  role: 'supervisor' | 'admin',
+  role: 'supervisor' | 'admin' | 'rider',
   isActive = true
 ): Promise<Id<'users'>> {
   return t.run(async (ctx) => {
@@ -31,7 +31,8 @@ async function createProfile(
     await ctx.db.insert('userProfiles', {
       userId,
       role,
-      displayName: role === 'admin' ? 'Admin Test' : 'Superviseur Test',
+      displayName:
+        role === 'admin' ? 'Admin Test' : role === 'rider' ? 'Livreur Test' : 'Superviseur Test',
       isActive,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -261,5 +262,40 @@ describe('role-gated dashboard queries', () => {
         .withIdentity({ subject: supervisorId, email: 'supervisor@bringo.test' })
         .query(api.imports.getImportBatches, {})
     ).rejects.toThrow(/Forbidden/);
+  });
+
+  it('keeps both dashboards closed to riders', async () => {
+    const t = makeT();
+    const riderId = await createProfile(t, 'rider');
+    const rider = t.withIdentity({ subject: riderId, email: 'rider@bringo.test' });
+
+    await expect(rider.query(api.reconciliation.getAdminDashboardData, {})).rejects.toThrow(
+      /Forbidden/
+    );
+    await expect(rider.query(api.reconciliation.getSupervisorDashboardData, {})).rejects.toThrow(
+      /Forbidden/
+    );
+  });
+
+  it('lets an admin assign the rider role', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert('users', { email: 'new-rider@bringo.test' })
+    );
+
+    await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .mutation(api.users.createUser, {
+        userId,
+        email: 'new-rider@bringo.test',
+        role: 'rider',
+        displayName: 'Nouveau Livreur',
+      });
+
+    const profile = await t.run(async (ctx) =>
+      ctx.db.query('userProfiles').withIndex('userId', (q) => q.eq('userId', userId)).unique()
+    );
+    expect(profile?.role).toBe('rider');
   });
 });

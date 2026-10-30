@@ -3,7 +3,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import type { Doc, Id } from '../_generated/dataModel';
 import type { MutationCtx, QueryCtx } from '../_generated/server';
 
-export type AppRole = 'supervisor' | 'admin';
+export type AppRole = 'supervisor' | 'admin' | 'rider';
 
 /** Contexts that expose `ctx.db` and `ctx.auth` (queries and mutations). */
 export type DbCtx = QueryCtx | MutationCtx;
@@ -60,4 +60,8 @@ export function requireAdmin(ctx: DbCtx): Promise<AppUser> {
 
 export function requireSupervisor(ctx: DbCtx): Promise<AppUser> {
   return requireRole(ctx, 'supervisor', 'admin');
+}
+
+export function requireRider(ctx: DbCtx): Promise<AppUser> {
+  return requireRole(ctx, 'rider');
 }

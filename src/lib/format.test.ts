@@ -32,5 +32,6 @@ describe('roleLabels', () => {
   it('has a French label per role', () => {
     expect(roleLabels.admin).toBe('Administrateur');
     expect(roleLabels.supervisor).toBe('Superviseur');
+    expect(roleLabels.rider).toBe('Livreur');
   });
 });

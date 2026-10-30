@@ -76,7 +76,8 @@ export function initials(name: string | null | undefined): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export const roleLabels: Record<'supervisor' | 'admin', string> = {
+export const roleLabels: Record<'supervisor' | 'admin' | 'rider', string> = {
   supervisor: 'Superviseur',
   admin: 'Administrateur',
+  rider: 'Livreur',
 };
