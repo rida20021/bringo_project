@@ -142,6 +142,37 @@ describe('markets catalog', () => {
     expect(all).toHaveLength(0);
   });
 
+  it('refuses to delete a market referenced by a live entry', async () => {
+    const t = makeT();
+    const admin = await asAdmin(t);
+
+    const marketId = await admin.mutation(api.markets.createMarket, {
+      name: 'Marché Central',
+      externalId: 'MKT-001',
+    });
+    const riderId = await createProfile(t, 'rider');
+
+    await t.run(async (ctx) =>
+      ctx.db.insert('liveEntries', {
+        riderUserId: riderId,
+        commandId: 'CMD-001',
+        commandKey: 'cmd-001',
+        marketId,
+        marketName: 'Marché Central',
+        marketExternalId: 'MKT-001',
+        amount: 1000,
+        paymentMethod: 'cash',
+        entryDate: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+
+    await expect(admin.mutation(api.markets.deleteMarket, { marketId })).rejects.toThrow(
+      /deactivate/
+    );
+  });
+
   it('lets riders read active markets but not inactive ones or mutate the catalog', async () => {
     const t = makeT();
     const admin = await asAdmin(t);

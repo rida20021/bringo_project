@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAmount, formatMAD, initials, roleLabels } from './format';
+import { formatAmount, formatMAD, initials, paymentMethodLabels, roleLabels } from './format';
 
 describe('formatMAD', () => {
   it('formats integer centimes as MAD with French separators', () => {
@@ -33,5 +33,13 @@ describe('roleLabels', () => {
     expect(roleLabels.admin).toBe('Administrateur');
     expect(roleLabels.supervisor).toBe('Superviseur');
     expect(roleLabels.rider).toBe('Livreur');
+  });
+});
+
+describe('paymentMethodLabels', () => {
+  it('has a French label per live payment method', () => {
+    expect(paymentMethodLabels.cash).toBe('Espèces');
+    expect(paymentMethodLabels.tpe).toBe('TPE');
+    expect(paymentMethodLabels.card).toBe('Carte en ligne');
   });
 });

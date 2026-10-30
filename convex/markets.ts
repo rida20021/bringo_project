@@ -119,8 +119,8 @@ export const updateMarket = mutation({
 });
 
 /**
- * Hard delete for now: nothing references markets until live orders land in
- * Milestone 2, at which point this must refuse to delete a referenced market.
+ * Hard delete is only possible while no live entry references the market.
+ * Once a rider has used it, deactivate it instead to preserve history.
  */
 export const deleteMarket = mutation({
   args: { marketId: v.id('markets') },
@@ -129,6 +129,14 @@ export const deleteMarket = mutation({
 
     const market = await ctx.db.get(args.marketId);
     if (!market) throw new Error('Market not found');
+
+    const referenced = await ctx.db
+      .query('liveEntries')
+      .withIndex('marketId', (q) => q.eq('marketId', args.marketId))
+      .first();
+    if (referenced) {
+      throw new Error('This market is used by live entries; deactivate it instead of deleting');
+    }
 
     await ctx.db.delete(args.marketId);
   },

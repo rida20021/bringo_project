@@ -1,6 +1,6 @@
 # Bringo Project Milestones & Tasks
 
-## Milestone 1: Foundation, Auth & Branding (Status: In Progress)
+## Milestone 1: Foundation, Auth & Branding (Status: Complete)
 - [x] Confirm Vite + React + TypeScript foundation.
 - [x] Convex schema definition (users, profiles, auth).
 - [x] Auth provider integration (Password).
@@ -10,10 +10,10 @@
 - [x] **Task 1.3: Create `markets` table** in Convex schema. Add an Admin page to CRUD (create, read, update, delete) markets.
 
 ## Milestone 2: Rider Live Entry (New)
-- [ ] **Task 2.1: Rider Dashboard UI.** Mobile-responsive form for Riders to enter Command #, select Market, enter Amount, select Payment Method.
-- [ ] **Task 2.2: Receipt Uploads.** Add Convex file storage for TPE receipts and Bank deposit receipts.
-- [ ] **Task 2.3: Rider Backend Mutations.** `orders.createLiveOrder`, `receipts.uploadReceipt`. Ensure only the logged-in rider can see their own entries.
-- [ ] **Task 2.4: Rider "My Entries" View.** A list of the rider's entries for the current day, with status of their receipts.
+- [x] **Task 2.1: Rider Dashboard UI.** Mobile-responsive form for Riders to enter Command #, select Market, enter Amount, select Payment Method.
+- [x] **Task 2.2: Receipt Uploads.** Add Convex file storage for TPE receipts and Bank deposit receipts.
+- [x] **Task 2.3: Rider Backend Mutations.** `orders.createLiveOrder`, `receipts.uploadReceipt`. Ensure only the logged-in rider can see their own entries.
+- [x] **Task 2.4: Rider "My Entries" View.** A list of the rider's entries for the current day, with status of their receipts.
 
 ## Milestone 3: Admin & Supervisor Verification
 - [ ] **Task 3.1: Admin Review Queue.** UI for Admin to see uploaded TPE and Bank receipts. Action buttons to Approve/Reject.

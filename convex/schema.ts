@@ -34,6 +34,48 @@ export default defineSchema({
   }).index('externalId', ['externalId'])
     .index('name', ['name']),
 
+  liveEntries: defineTable({
+    riderUserId: v.id('users'),
+    commandId: v.string(),
+    // Lowercased command id, used to block duplicate submissions.
+    commandKey: v.string(),
+    marketId: v.id('markets'),
+    // Snapshots keep historical rows readable if a market is renamed.
+    marketName: v.string(),
+    marketExternalId: v.string(),
+    /** Integer centimes. */
+    amount: v.number(),
+    paymentMethod: v.union(v.literal('cash'), v.literal('tpe'), v.literal('card')),
+    /** Start of the Casablanca day, so entries can be listed per day. */
+    entryDate: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('riderUserId', ['riderUserId'])
+    .index('riderEntryDate', ['riderUserId', 'entryDate'])
+    .index('riderCommandDate', ['riderUserId', 'entryDate', 'commandKey'])
+    .index('marketId', ['marketId']),
+
+  liveEntryReceipts: defineTable({
+    liveEntryId: v.id('liveEntries'),
+    riderUserId: v.id('users'),
+    kind: v.union(v.literal('tpe'), v.literal('bank_deposit')),
+    storageId: v.id('_storage'),
+    fileName: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+    status: v.union(
+      v.literal('pending_review'),
+      v.literal('approved'),
+      v.literal('rejected')
+    ),
+    reviewedBy: v.optional(v.id('users')),
+    reviewedAt: v.optional(v.number()),
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index('liveEntryId', ['liveEntryId'])
+    .index('riderUserId', ['riderUserId'])
+    .index('status', ['status']),
+
   riders: defineTable({
     canonicalName: v.string(),
     aliases: v.array(v.string()),
