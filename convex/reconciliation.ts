@@ -41,7 +41,7 @@ export const getSupervisorDashboardData = query({
       .filter((d) => d.status === 'approved')
       .reduce((sum, d) => sum + d.amount, 0);
     const totalPendingDeposit = deposits
-      .filter((d) => d.status === 'submitted')
+      .filter((d) => d.status === 'submitted' || d.status === 'pending_review')
       .reduce((sum, d) => sum + d.amount, 0);
 
     const totalTpeApproved = tpeReceipts
@@ -86,7 +86,7 @@ export const getSupervisorDashboardData = query({
       },
       riders: Array.from(riderMap.values()).sort((a, b) => b.remaining - a.remaining),
       recentCollections: collections.slice(0, 10),
-      pendingDeposits: deposits.filter((d) => d.status === 'submitted'),
+      pendingDeposits: deposits.filter((d) => d.status === 'submitted' || d.status === 'pending_review'),
       pendingTpe: tpeReceipts.filter((r) => r.status === 'pending_review'),
     };
   },
@@ -142,10 +142,10 @@ export const getAdminDashboardData = query({
         count: collections.length,
       },
       deposits: {
-        submitted: deposits.filter((d) => d.status === 'submitted').reduce((s, d) => s + d.amount, 0),
+        submitted: deposits.filter((d) => d.status === 'submitted' || d.status === 'pending_review').reduce((s, d) => s + d.amount, 0),
         approved: deposits.filter((d) => d.status === 'approved').reduce((s, d) => s + d.amount, 0),
         rejected: deposits.filter((d) => d.status === 'rejected').reduce((s, d) => s + d.amount, 0),
-        countSubmitted: deposits.filter((d) => d.status === 'submitted').length,
+        countSubmitted: deposits.filter((d) => d.status === 'submitted' || d.status === 'pending_review').length,
         countApproved: deposits.filter((d) => d.status === 'approved').length,
         countRejected: deposits.filter((d) => d.status === 'rejected').length,
       },

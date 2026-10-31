@@ -211,10 +211,12 @@ export default defineSchema({
 
   bankDeposits: defineTable({
     amount: v.number(),
-    bankReference: v.string(),
+    bankReference: v.optional(v.string()),
     depositDate: v.number(),
     depositedBy: v.id('users'),
+    riderId: v.optional(v.id('riders')),
     status: v.union(
+      v.literal('pending_review'),
       v.literal('submitted'),
       v.literal('approved'),
       v.literal('rejected')
@@ -226,7 +228,8 @@ export default defineSchema({
     createdAt: v.number(),
   }).index('status', ['status'])
     .index('depositDate', ['depositDate'])
-    .index('depositedBy', ['depositedBy']),
+    .index('depositedBy', ['depositedBy'])
+    .index('riderId', ['riderId']),
 
   depositAllocations: defineTable({
     depositId: v.id('bankDeposits'),

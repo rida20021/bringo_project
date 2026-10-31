@@ -1,7 +1,7 @@
 import { mutation, query, internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
-import { requireAdmin } from './lib/auth';
+import { requireAdmin, requireSupervisor } from './lib/auth';
 import { parseAmountToCentimes, parseTikTakDate } from './lib/tiktakValues';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'card' | 'online_payment' | 'unknown'> = {
@@ -25,11 +25,12 @@ export const getImportBatchByHash = internalQuery({
   },
 });
 
-/** Admin-only upload URL for the manual Excel import flow. */
+/** Admin/Supervisor upload URL shared by the Excel import flow and
+ * bank-deposit receipt uploads on the supervisor dashboard. */
 export const generateAdminUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireSupervisor(ctx);
     return ctx.storage.generateUploadUrl();
   },
 });

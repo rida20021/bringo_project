@@ -2,47 +2,39 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel } from './_generated/dataModel';
-import { requireAdmin, requireAppUser } from './lib/auth';
+import { requireAdmin, requireAppUser, requireSupervisor } from './lib/auth';
 
+/**
+ * Supervisor or Admin records a bank deposit tied to a rider.
+ * Takes the rider ID, deposit amount in centimes, and a single receipt storage ID.
+ * The deposit is inserted with `pending_review` status for admin approval.
+ */
 export const createBankDeposit = mutation({
   args: {
+    riderId: v.id('riders'),
     amount: v.number(),
-    bankReference: v.string(),
-    depositDate: v.number(),
-    evidenceStorageIds: v.array(v.id('_storage')),
-    allocations: v.array(v.object({ collectionId: v.id('cashCollections'), allocatedAmount: v.number() })),
+    storageId: v.id('_storage'),
   },
   handler: async (ctx, args) => {
-    const appUser = await requireAppUser(ctx);
+    const appUser = await requireSupervisor(ctx);
 
-    let totalAllocated = 0;
-    for (const alloc of args.allocations) {
-      const collection = await ctx.db.get(alloc.collectionId);
-      if (!collection) throw new Error(`Collection ${alloc.collectionId} not found`);
-      if (collection.isReversal) throw new Error(`Collection ${alloc.collectionId} is a reversal`);
-      totalAllocated += alloc.allocatedAmount;
-    }
-    if (totalAllocated > args.amount) throw new Error('Total allocated exceeds deposit amount');
+    if (args.amount <= 0) throw new Error('Amount must be greater than zero');
 
-    const depositId = await ctx.db.insert('bankDeposits', {
+    const rider = await ctx.db.get(args.riderId);
+    if (!rider) throw new Error('Rider not found');
+
+    const stored = await ctx.db.system.get('_storage', args.storageId);
+    if (!stored) throw new Error('Receipt file not found in storage');
+
+    return ctx.db.insert('bankDeposits', {
       amount: args.amount,
-      bankReference: args.bankReference,
-      depositDate: args.depositDate,
+      depositDate: Date.now(),
       depositedBy: appUser.userId,
-      status: 'submitted',
-      evidenceStorageIds: args.evidenceStorageIds,
+      riderId: args.riderId,
+      status: 'pending_review',
+      evidenceStorageIds: [args.storageId],
       createdAt: Date.now(),
     });
-
-    for (const alloc of args.allocations) {
-      await ctx.db.insert('depositAllocations', {
-        depositId,
-        collectionId: alloc.collectionId,
-        allocatedAmount: alloc.allocatedAmount,
-      });
-    }
-
-    return depositId;
   },
 });
 
@@ -57,7 +49,9 @@ export const reviewBankDeposit = mutation({
 
     const deposit = await ctx.db.get(args.depositId);
     if (!deposit) throw new Error('Deposit not found');
-    if (deposit.status !== 'submitted') throw new Error('Deposit not in submitted state');
+    if (deposit.status !== 'submitted' && deposit.status !== 'pending_review') {
+      throw new Error('Deposit is not awaiting review');
+    }
     if (args.action === 'reject' && !args.reason?.trim()) throw new Error('A rejection reason is required');
 
     if (args.action === 'approve') {
@@ -79,7 +73,7 @@ export const reviewBankDeposit = mutation({
 
 export const getBankDeposits = query({
   args: {
-    status: v.optional(v.union(v.literal('submitted'), v.literal('approved'), v.literal('rejected'))),
+    status: v.optional(v.union(v.literal('pending_review'), v.literal('submitted'), v.literal('approved'), v.literal('rejected'))),
     fromDate: v.optional(v.number()),
     toDate: v.optional(v.number()),
     limit: v.optional(v.number()),
