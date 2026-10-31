@@ -9,6 +9,7 @@ import SetupPage from './features/auth/SetupPage';
 import SupervisorDashboard from './features/supervisor/SupervisorDashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import MarketsPage from './features/admin/MarketsPage';
+import RidersPage from './features/admin/RidersPage';
 import RiderHome from './features/rider/RiderHome';
 import NotFound from './components/NotFound';
 
@@ -110,6 +111,7 @@ export default function App() {
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="markets" element={<MarketsPage />} />
+          <Route path="riders" element={<RidersPage />} />
         </Route>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />

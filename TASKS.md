@@ -16,8 +16,9 @@
 - [x] **Task 2.4: Rider "My Entries" View.** A list of the rider's entries for the current day, with status of their receipts.
 
 ## Milestone 3: Admin & Supervisor Verification
-- [ ] **Task 3.1: Admin Review Queue.** UI for Admin to see uploaded TPE and Bank receipts. Action buttons to Approve/Reject.
-- [ ] **Task 3.2: Backend Review Mutations.** `receipts.approveReceipt`, `receipts.rejectReceipt`. 
+- [x] **Closed registration.** Rider accounts are created by admins only; public sign-up is disabled server-side as soon as an admin exists (bootstrap exception).
+- [x] **Task 3.1: Admin Review Queue.** UI for Admin to see uploaded TPE and Bank receipts. Action buttons to Approve/Reject.
+- [x] **Task 3.2: Backend Review Mutations.** `receipts.approveReceipt`, `receipts.rejectReceipt`. 
 - [ ] **Task 3.3: Supervisor Dashboard.** Dashboard for Supervisor to view rider cash collections and initiate deposits if needed.
 
 ## Milestone 4: Excel Ingestion & Next-Day Matching Engine (Critical)

@@ -2,21 +2,28 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useConvexAuth } from 'convex/react';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { api } from '@convex/_generated/api';
 
 type Mode = 'signIn' | 'signUp';
 
 export default function LoginPage() {
   const { signIn } = useAuthActions();
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const registration = useQuery(api.users.getRegistrationStatus, {});
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<Mode>('signIn');
+  const [requestedMode, setRequestedMode] = useState<Mode>('signIn');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Sign-up exists only for the one-time bootstrap; afterwards the auth backend
+  // rejects it too, so this is not just a UI gate.
+  const allowSignUp = registration?.allowSignUp ?? false;
+  const mode: Mode = allowSignUp ? requestedMode : 'signIn';
 
   if (!isLoading && isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -56,7 +63,7 @@ export default function LoginPage() {
   };
 
   const switchMode = () => {
-    setMode(mode === 'signIn' ? 'signUp' : 'signIn');
+    setRequestedMode(requestedMode === 'signIn' ? 'signUp' : 'signIn');
     setError(null);
     setPassword('');
   };
@@ -106,10 +113,10 @@ export default function LoginPage() {
 
       <main className="auth-main">
         <div className="auth-card">
-          <h2>{mode === 'signIn' ? 'Connexion' : 'Créer un compte'}</h2>
+          <h2>{mode === 'signIn' ? 'Connexion' : 'Créer le compte administrateur'}</h2>
           <p className="auth-intro">
             {mode === 'signIn'
-              ? 'Accédez à votre espace de supervision ou d’administration.'
+              ? 'Accédez à votre espace livreur, superviseur ou administrateur.'
               : 'Le premier compte créé peut s’activer comme administrateur à l’étape suivante.'}
           </p>
 
@@ -169,10 +176,21 @@ export default function LoginPage() {
           </form>
 
           <p className="auth-switch">
-            {mode === 'signIn' ? 'Pas encore de compte ?' : 'Vous avez déjà un compte ?'}{' '}
-            <button type="button" className="link-button" onClick={switchMode}>
-              {mode === 'signIn' ? 'Créer un compte' : 'Se connecter'}
-            </button>
+            {allowSignUp ? (
+              <>
+                {mode === 'signIn'
+                  ? 'Premier démarrage ?'
+                  : 'Vous avez déjà un compte ?'}{' '}
+                <button type="button" className="link-button" onClick={switchMode}>
+                  {mode === 'signIn' ? 'Créer le compte administrateur' : 'Se connecter'}
+                </button>
+              </>
+            ) : (
+              <span className="auth-footnote">
+                Les comptes sont créés par l’administration. Si vous êtes livreur, contactez
+                votre administrateur pour obtenir vos identifiants.
+              </span>
+            )}
           </p>
         </div>
       </main>

@@ -744,9 +744,23 @@ a {
   cursor: pointer;
 }
 
+.field textarea {
+  width: 100%;
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 .field input:not([type='file']):focus,
 .field select:focus,
-.field input[type='file']:focus {
+.field input[type='file']:focus,
+.field textarea:focus {
   border-color: var(--primary);
   outline: none;
   box-shadow: 0 0 0 3px rgb(74 57 126 / 0.15);
@@ -884,6 +898,12 @@ a {
   margin-top: 18px;
   font-size: 13px;
   color: var(--muted);
+}
+
+.auth-footnote {
+  display: block;
+  line-height: 1.55;
+  color: var(--muted-2);
 }
 
 /* ---------- Setup and notices ---------- */
@@ -1058,6 +1078,246 @@ a {
 .button-ghost.is-danger:hover {
   border-color: var(--red);
   background: var(--red-light);
+}
+
+/* ---------- Admin: riders ---------- */
+
+.rider-admin-form {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 1fr)
+    auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+
+.rider-admin-form .button {
+  height: 42px;
+  white-space: nowrap;
+}
+
+/* ---------- Admin: receipt review queue ---------- */
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+}
+
+.review-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fcfcfa;
+}
+
+.review-main {
+  min-width: 0;
+}
+
+.review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-command {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.review-rider {
+  margin-top: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.review-meta {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.review-actions .button {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.review-actions .button-ghost {
+  height: 34px;
+}
+
+.review-reject {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.review-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.review-link {
+  display: block;
+  width: 100%;
+}
+
+.review-thumb {
+  width: 100%;
+  max-height: 150px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #f2f3ef;
+}
+
+.review-file {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.review-loading {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Admin: Excel import & discrepancies ---------- */
+
+.import-form {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.import-form .button {
+  justify-self: start;
+}
+
+.form-notice {
+  padding: 10px 12px;
+  border: 1px solid #f0dca8;
+  border-radius: var(--radius-sm);
+  background: var(--amber-light);
+  color: var(--amber);
+  font-size: 13px;
+}
+
+.import-result {
+  margin-top: 18px;
+}
+
+.import-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+  margin-top: 12px;
+}
+
+.filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.button-ghost.is-active,
+.button-ghost.is-active:hover {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.discrepancy-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.discrepancy-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin-top: 12px;
+}
+
+.discrepancy-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.discrepancy-amount dt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.discrepancy-amount dd {
+  font-size: 13.5px;
+}
+
+.discrepancy-resolution {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .import-form .button {
+    width: 100%;
+  }
+
+  .import-summary {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .rider-admin-form {
+    grid-template-columns: 1fr;
+  }
+
+  .rider-admin-form .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .review-card {
+    grid-template-columns: 1fr;
+  }
+
+  .review-evidence {
+    align-items: flex-start;
+  }
+
+  .review-file {
+    text-align: left;
+  }
 }
 
 /* ---------- Rider shell ---------- */

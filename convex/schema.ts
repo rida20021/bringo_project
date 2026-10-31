@@ -13,6 +13,12 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
+    /**
+     * Internal marker set only while an admin-provisioned account is being
+     * created. The auth callback consumes it and clears it immediately, so it
+     * never persists or reaches clients.
+     */
+    provisioningRole: v.optional(v.literal('rider')),
   }).index('email', ['email'])
     .index('phone', ['phone']),
 
@@ -23,7 +29,8 @@ export default defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('userId', ['userId']),
+  }).index('userId', ['userId'])
+    .index('role', ['role']),
 
   markets: defineTable({
     name: v.string(),
@@ -53,7 +60,8 @@ export default defineSchema({
   }).index('riderUserId', ['riderUserId'])
     .index('riderEntryDate', ['riderUserId', 'entryDate'])
     .index('riderCommandDate', ['riderUserId', 'entryDate', 'commandKey'])
-    .index('marketId', ['marketId']),
+    .index('marketId', ['marketId'])
+    .index('entryDate', ['entryDate']),
 
   liveEntryReceipts: defineTable({
     liveEntryId: v.id('liveEntries'),
@@ -75,6 +83,34 @@ export default defineSchema({
   }).index('liveEntryId', ['liveEntryId'])
     .index('riderUserId', ['riderUserId'])
     .index('status', ['status']),
+
+  discrepancies: defineTable({
+    reason: v.union(v.literal('missing_in_excel'), v.literal('amount_mismatch')),
+    commandId: v.string(),
+    /** Lowercased/trimmed command id used for case-insensitive matching. */
+    commandKey: v.string(),
+    /** Start of the Casablanca day the live entry belongs to. */
+    entryDate: v.number(),
+    riderUserId: v.id('users'),
+    riderName: v.string(),
+    liveEntryId: v.id('liveEntries'),
+    orderId: v.optional(v.id('orders')),
+    importBatchId: v.optional(v.id('importBatches')),
+    /** Integer centimes, as entered live by the rider. */
+    riderAmount: v.number(),
+    /** Integer centimes; absent when the command is missing from Excel. */
+    excelAmount: v.optional(v.number()),
+    status: v.union(v.literal('open'), v.literal('resolved')),
+    resolvedBy: v.optional(v.id('users')),
+    resolvedAt: v.optional(v.number()),
+    resolutionNote: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('status', ['status'])
+    .index('entryDate', ['entryDate'])
+    .index('liveEntryId', ['liveEntryId'])
+    .index('liveEntryReason', ['liveEntryId', 'reason'])
+    .index('commandKey', ['commandKey']),
 
   riders: defineTable({
     canonicalName: v.string(),

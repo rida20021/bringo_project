@@ -2,7 +2,7 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import type { MutationCtx } from './_generated/server';
-import { requireAppUser, requireRider } from './lib/auth';
+import { requireAdmin, requireAppUser, requireRider, requireSupervisor } from './lib/auth';
 
 export const ALLOWED_RECEIPT_MIME_TYPES = [
   'image/jpeg',
@@ -12,6 +12,10 @@ export const ALLOWED_RECEIPT_MIME_TYPES = [
 ] as const;
 
 export const MAX_RECEIPT_SIZE_BYTES = 10 * 1024 * 1024;
+
+const MAX_REJECTION_REASON_LENGTH = 500;
+const DEFAULT_PENDING_LIMIT = 50;
+const MAX_PENDING_LIMIT = 100;
 
 export interface ReceiptUploadInput {
   storageId: Id<'_storage'>;
@@ -130,5 +134,124 @@ export const getReceiptUrl = query({
     if (!isOwner && !canReview) throw new Error('Forbidden: insufficient role');
 
     return ctx.storage.getUrl(receipt.storageId);
+  },
+});
+
+/**
+ * Review queue. Supervisors and admins may read it; only admins may act on it.
+ * Newest submissions first.
+ */
+export const listPendingReceipts = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireSupervisor(ctx);
+
+    const requestedLimit = args.limit ?? DEFAULT_PENDING_LIMIT;
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.floor(requestedLimit), 1), MAX_PENDING_LIMIT)
+      : DEFAULT_PENDING_LIMIT;
+
+    const receipts = await ctx.db
+      .query('liveEntryReceipts')
+      .withIndex('status', (q) => q.eq('status', 'pending_review'))
+      .order('desc')
+      .take(limit);
+
+    const rows = await Promise.all(
+      receipts.map(async (receipt) => {
+        const entry = await ctx.db.get(receipt.liveEntryId);
+        if (!entry) return null;
+
+        const user = await ctx.db.get(receipt.riderUserId);
+        const profile = await ctx.db
+          .query('userProfiles')
+          .withIndex('userId', (q) => q.eq('userId', receipt.riderUserId))
+          .unique();
+
+        return {
+          receiptId: receipt._id,
+          kind: receipt.kind,
+          fileName: receipt.fileName,
+          mimeType: receipt.mimeType,
+          size: receipt.size,
+          createdAt: receipt.createdAt,
+          url: await ctx.storage.getUrl(receipt.storageId),
+          entry: {
+            liveEntryId: entry._id,
+            commandId: entry.commandId,
+            marketName: entry.marketName,
+            amount: entry.amount,
+            paymentMethod: entry.paymentMethod,
+            entryDate: entry.entryDate,
+          },
+          rider: {
+            userId: receipt.riderUserId,
+            displayName: profile?.displayName ?? user?.name ?? user?.email ?? 'Livreur',
+            email: user?.email ?? null,
+          },
+        };
+      })
+    );
+
+    return rows.filter((row): row is NonNullable<typeof row> => row !== null);
+  },
+});
+
+async function loadPendingReceipt(
+  ctx: MutationCtx,
+  receiptId: Id<'liveEntryReceipts'>
+): Promise<Id<'liveEntryReceipts'>> {
+  const receipt = await ctx.db.get(receiptId);
+  if (!receipt) throw new Error('Receipt not found');
+  if (receipt.status !== 'pending_review') {
+    throw new Error('This receipt has already been reviewed');
+  }
+  return receipt._id;
+}
+
+/** Approve evidence only: no deposit or cash total is created here. */
+export const approveReceipt = mutation({
+  args: { receiptId: v.id('liveEntryReceipts') },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const receiptId = await loadPendingReceipt(ctx, args.receiptId);
+
+    await ctx.db.patch(receiptId, {
+      status: 'approved',
+      reviewedBy: admin.userId,
+      reviewedAt: Date.now(),
+      rejectionReason: undefined,
+    });
+
+    return receiptId;
+  },
+});
+
+export const rejectReceipt = mutation({
+  args: {
+    receiptId: v.id('liveEntryReceipts'),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const reason = args.reason.trim();
+    if (!reason) throw new Error('A rejection reason is required');
+    if (reason.length > MAX_REJECTION_REASON_LENGTH) {
+      throw new Error(
+        `Rejection reason must be ${MAX_REJECTION_REASON_LENGTH} characters or fewer`
+      );
+    }
+
+    const receiptId = await loadPendingReceipt(ctx, args.receiptId);
+
+    await ctx.db.patch(receiptId, {
+      status: 'rejected',
+      reviewedBy: admin.userId,
+      reviewedAt: Date.now(),
+      rejectionReason: reason,
+    });
+
+    return receiptId;
   },
 });

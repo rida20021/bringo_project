@@ -1,5 +1,35 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "agent": {
+    "plan": {
+      "model": "nvidia/deepseek-v4.1-flash"
+    },
+    "build": {
+      "model": "iteracompute/qwen/qwen3.8-27b"
+    },
+    "orchestrator": {
+      "description": "Team lead that plans, delegates, and reviews complex tasks.",
+      "mode": "primary",
+      "model": "alibaba/qwen-max",
+      "maxTokens": 8192,
+      "prompt": "You are the Orchestrator. Your job is to manage complex tasks by breaking them down and delegating to subagents. Do NOT write code yourself. Instead, use the 'task' tool to launch subagents: 'coder' to write code, 'reviewer' to check for bugs and security issues, and 'tester' to write and run tests. Plan the work, assign it, review the output, and ensure the final result is correct. Always follow the rules in AGENTS.md."
+    },
+    "reviewer": {
+      "description": "Reviews code for bugs, type errors, and best practices.",
+      "mode": "subagent",
+      "model": "nvidia/deepseek-v4.1-flash",
+      "maxTokens": 8192,
+      "prompt": "You are a strict code reviewer. Review the changes provided. Check for TypeScript errors, security issues, and adherence to AGENTS.md. Return a list of issues that must be fixed."
+    },
+    "tester": {
+      "description": "Writes and runs tests for new features.",
+      "mode": "subagent",
+      "model": "iteracompute/qwen/qwen3.8-27b",
+      "maxTokens": 8192,
+      "prompt": "You write and run tests. Write test cases for the provided code, run them using the terminal, and fix any failures. Do not run dev servers."
+    }
+  },
   "mcp": {
     "servers": {
       "chrome-devtools": {

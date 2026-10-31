@@ -3,6 +3,9 @@ import { api } from '@convex/_generated/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import StatusBadge from '@/components/StatusBadge';
 import { formatDateTime, formatMAD, formatShortDate } from '@/lib/format';
+import DiscrepanciesPanel from './DiscrepanciesPanel';
+import ExcelImportPanel from './ExcelImportPanel';
+import PendingReceipts from './PendingReceipts';
 
 export default function AdminDashboard() {
   const data = useQuery(api.reconciliation.getAdminDashboardData, {});
@@ -58,6 +61,12 @@ export default function AdminDashboard() {
           </span>
         </div>
       </section>
+
+      <ExcelImportPanel />
+
+      <DiscrepanciesPanel />
+
+      <PendingReceipts />
 
       <section className="panel">
         <header className="panel-head">

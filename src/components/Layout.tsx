@@ -25,6 +25,7 @@ export default function Layout() {
       ? [
           { to: '/admin/dashboard', label: 'Vue d’ensemble' },
           { to: '/admin/markets', label: 'Marchés' },
+          { to: '/admin/riders', label: 'Livreurs' },
         ]
       : []),
   ];

@@ -14,39 +14,35 @@
     "convex:deploy": "convex deploy"
   },
   "dependencies": {
-    "@convex-dev/auth": "^0.0.71",
-    "better-auth": "^1.0.0",
-    "convex": "^1.15.0",
-    "date-fns": "^3.6.0",
-    "date-fns-tz": "^3.1.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
+    "convex": "^1.15.0",
+    "@convex-dev/auth": "^0.0.71",
+    "better-auth": "^1.0.0",
+    "zod": "^3.23.8",
     "xlsx": "^0.18.5",
-    "zod": "^3.23.8"
+    "date-fns": "^3.6.0",
+    "date-fns-tz": "^3.1.3"
   },
   "devDependencies": {
-    "@edge-runtime/vm": "^5.0.0",
-    "@eslint/js": "^9.39.5",
-    "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/react": "^16.0.1",
-    "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "@types/node": "^22.7.5",
     "@vitejs/plugin-react": "^4.3.2",
-    "convex": "^1.15.0",
-    "convex-test": "^0.0.66",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
     "eslint": "^9.11.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.12",
+    "vitest": "^2.1.2",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/jest-dom": "^6.5.0",
     "jsdom": "^25.0.1",
-    "typescript": "^5.6.2",
-    "typescript-eslint": "^8.72.1",
-    "vite": "^5.4.8",
-    "vitest": "^2.1.2"
+    "convex": "^1.15.0"
+    
   },
-  "allowScripts": {
-    "esbuild@0.27.0": true,
-    "esbuild@0.21.5": true
+    "overrides": {
+    "esbuild": "0.24.0"
   }
 }

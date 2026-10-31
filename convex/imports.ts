@@ -1,7 +1,8 @@
-import { query, internalMutation, internalQuery } from './_generated/server';
+import { mutation, query, internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { requireAdmin } from './lib/auth';
+import { parseAmountToCentimes, parseTikTakDate } from './lib/tiktakValues';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'card' | 'online_payment' | 'unknown'> = {
   cash: 'cash',
@@ -14,33 +15,6 @@ function normalizePaymentMethod(raw: string): 'cash' | 'card' | 'online_payment'
   return PAYMENT_METHOD_MAP[key] || 'unknown';
 }
 
-/** Parse an amount expressed in MAD and return integer centimes. */
-function parseAmount(value: unknown): number | null {
-  if (typeof value === 'number') return Math.round(value * 100);
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[^\d.,-]/g, '').replace(',', '.');
-    const parsed = parseFloat(cleaned);
-    if (isNaN(parsed)) return null;
-    return Math.round(parsed * 100);
-  }
-  return null;
-}
-
-function parseDate(value: unknown): number | null {
-  if (value instanceof Date) return value.getTime();
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const parsed = Date.parse(value);
-    if (!isNaN(parsed)) return parsed;
-    const parts = value.split(/[-/]/);
-    if (parts.length === 3) {
-      const [d, m, y] = parts.map(Number);
-      if (y > 1000 && m <= 12 && d <= 31) return new Date(y, m - 1, d).getTime();
-    }
-  }
-  return null;
-}
-
 export const getImportBatchByHash = internalQuery({
   args: { hash: v.string() },
   handler: async (ctx, args) => {
@@ -48,6 +22,35 @@ export const getImportBatchByHash = internalQuery({
       .query('importBatches')
       .withIndex('attachmentHash', (q) => q.eq('attachmentHash', args.hash))
       .first();
+  },
+});
+
+/** Admin-only upload URL for the manual Excel import flow. */
+export const generateAdminUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Compact summary returned when an upload is recognised as a duplicate file. */
+export const getImportBatchSummary = internalQuery({
+  args: { batchId: v.id('importBatches') },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) throw new Error('Batch not found');
+    return {
+      status: batch.status,
+      reportDate: batch.reportDate,
+      totalRows: batch.totalRows,
+      acceptedRows: batch.acceptedRows,
+      rejectedRows: batch.rejectedRows,
+      duplicateRows: batch.duplicateRows,
+      conflictRows: batch.conflictRows,
+      completedAt: batch.completedAt ?? null,
+      errorSummary: batch.errorSummary ?? null,
+    };
   },
 });
 
@@ -67,6 +70,14 @@ export const createImportBatch = internalMutation({
       .unique();
     if (existingByMessage) return { batchId: existingByMessage._id, isDuplicate: true };
 
+    // The same file can arrive through another channel (manual upload vs
+    // Gmail), so the content hash is the authoritative duplicate signal.
+    const existingByHash = await ctx.db
+      .query('importBatches')
+      .withIndex('attachmentHash', (q) => q.eq('attachmentHash', args.attachmentHash))
+      .first();
+    if (existingByHash) return { batchId: existingByHash._id, isDuplicate: true };
+
     const batchId = await ctx.db.insert('importBatches', {
       ...args,
       receivedAt: Date.now(),
@@ -83,11 +94,22 @@ export const createImportBatch = internalMutation({
 });
 
 export const processImportBatch = internalMutation({
-  args: { batchId: v.id('importBatches'), rows: v.array(v.any()) },
+  args: {
+    batchId: v.id('importBatches'),
+    rows: v.array(v.any()),
+    /** Original Excel row numbers, parallel to `rows`. Optional for Gmail imports. */
+    rowNumbers: v.optional(v.array(v.number())),
+  },
   handler: async (ctx, args) => {
     const batch = await ctx.db.get(args.batchId);
     if (!batch) throw new Error('Batch not found');
     if (batch.status !== 'processing') throw new Error('Batch not in processing state');
+
+    if (args.rowNumbers && args.rowNumbers.length !== args.rows.length) {
+      throw new Error(
+        `rowNumbers length (${args.rowNumbers.length}) does not match rows length (${args.rows.length})`
+      );
+    }
 
     let accepted = 0;
     let rejected = 0;
@@ -97,7 +119,7 @@ export const processImportBatch = internalMutation({
 
     for (let i = 0; i < args.rows.length; i++) {
       const row = args.rows[i];
-      const rowNum = i + 1;
+      const rowNum = args.rowNumbers?.[i] ?? i + 1;
 
       const commandId = String(row.number || row.command_id || row.id || '').trim();
       const rawRiderName = String(row.shopper_name || row.rider || row.name || '').trim();
@@ -106,8 +128,8 @@ export const processImportBatch = internalMutation({
       const rawDate = row.delivery_date_end || row.date || row.delivery_date;
 
       const paymentMethod = normalizePaymentMethod(rawPaymentMethod);
-      const amount = parseAmount(rawAmount);
-      const deliveryDate = parseDate(rawDate);
+      const amount = parseAmountToCentimes(rawAmount);
+      const deliveryDate = parseTikTakDate(rawDate);
 
       let validationState: 'valid' | 'invalid' | 'duplicate' | 'conflict' = 'valid';
       const rowErrors: string[] = [];
@@ -129,13 +151,14 @@ export const processImportBatch = internalMutation({
         validationState = 'invalid';
         rowErrors.push('Invalid amount');
       }
-      if (!deliveryDate) {
+      if (deliveryDate === null) {
         validationState = 'invalid';
         rowErrors.push('Invalid date');
       }
 
       let linkedOrderId: Id<'orders'> | undefined;
       if (validationState === 'valid') {
+        // Command IDs are unique across the whole orders table, not per day.
         const existingOrder = await ctx.db
           .query('orders')
           .withIndex('commandId', (q) => q.eq('commandId', commandId))
@@ -190,16 +213,22 @@ export const processImportBatch = internalMutation({
         linkedOrderId,
       });
 
-      if (validationState === 'valid' && riderId && paymentMethod !== 'unknown') {
+      if (
+        validationState === 'valid' &&
+        riderId &&
+        paymentMethod !== 'unknown' &&
+        deliveryDate !== null &&
+        amount !== null
+      ) {
         const eligibilityStatus =
           paymentMethod === 'online_payment' ? 'excluded_payment_method' : 'eligible';
         const orderId = await ctx.db.insert('orders', {
           commandId,
-          deliveryDate: deliveryDate!,
+          deliveryDate,
           riderId,
           rawRiderName,
           paymentMethod,
-          amount: amount!,
+          amount,
           store: row.store_internal_name ? String(row.store_internal_name) : undefined,
           company: row.company ? String(row.company) : undefined,
           shippingInfo: row,
