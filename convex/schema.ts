@@ -27,6 +27,11 @@ export default defineSchema({
     role: v.union(v.literal('supervisor'), v.literal('admin'), v.literal('rider')),
     displayName: v.string(),
     isActive: v.boolean(),
+    /**
+     * Soft-delete marker. Archived accounts are hidden from the admin
+     * directory and cannot authenticate, but their financial history is kept.
+     */
+    isArchived: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('userId', ['userId'])

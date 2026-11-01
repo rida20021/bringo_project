@@ -28,6 +28,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@types/node": "^22.7.5",
@@ -45,5 +46,8 @@
   },
   "overrides": {
     "esbuild": "0.24.0"
+  },
+  "allowScripts": {
+    "esbuild@0.24.0": true
   }
 }

@@ -10,38 +10,65 @@
 - [x] **Task 1.3: Create `markets` table** and Admin CRUD page.
 
 ## Milestone 2: Rider Live Entry (Complete)
-- [x] **Task 2.1: Rider Dashboard UI.** Mobile-responsive form for Riders.
-- [x] **Task 2.2: Receipt Uploads.** Convex file storage for TPE and Bank receipts.
-- [x] **Task 2.3: Rider Backend Mutations.** `orders.createLiveOrder`, `receipts.uploadReceipt`.
-- [x] **Task 2.4: Rider "My Entries" View.** List of the rider's entries for the current day.
+- [x] **Task 2.1: Rider Dashboard UI.**
+- [x] **Task 2.2: Receipt Uploads.**
+- [x] **Task 2.3: Rider Backend Mutations.**
+- [x] **Task 2.4: Rider "My Entries" View.**
 
 ## Milestone 3: Admin & Supervisor Verification (Complete)
-- [x] **Closed registration.** Rider accounts are created by admins only.
-- [x] **Task 3.1: Admin Review Queue.** UI for Admin to see uploaded receipts.
-- [x] **Task 3.2: Backend Review Mutations.** `approveReceipt`, `rejectReceipt`. 
-- [x] **Task 3.3: Supervisor Dashboard.** Dedicated page for Supervisors to make deposits and view specific KPIs.
+- [x] **Closed registration.**
+- [x] **Task 3.1: Admin Review Queue.**
+- [x] **Task 3.2: Backend Review Mutations.**
+- [x] **Task 3.3: Supervisor Dashboard.**
 
 ## Milestone 4: Excel Ingestion & Next-Day Matching Engine (Complete)
-- [x] **Task 4.1: Excel Import.** Admin UI to upload the TikTak Excel file. Backend parser using `xlsx`.
-- [x] **Task 4.2: Discrepancy Engine.** Logic to compare Rider Live Entries against Imported Excel.
-- [x] **Task 4.3: Admin Discrepancy Dashboard.** View showing flagged mismatches. Admin can mark them as "Resolved".
+- [x] **Task 4.1: Excel Import.**
+- [x] **Task 4.2: Discrepancy Engine.**
+- [x] **Task 4.3: Admin Discrepancy Dashboard.**
 
 ## Milestone 4.5: Production Polish (Complete)
-- [x] **Task 4.5.1: Toast Notifications.** Replace inline text with modern popup toasts (e.g., `sonner`).
-- [x] **Task 4.5.2: Confirm Modals.** Add popups for destructive actions (Rejecting receipts, Deleting markets).
-- [x] **Task 4.5.3: Pagination.** Add "Load More" buttons to the Discrepancies and Review queues.
-- [x] **Task 4.5.4: Audit Logs.** Write to the `auditLogs` table on approvals, rejections, and imports.
-- [x] **Task 4.5.5: Orphaned File Cleanup.** Add a Cron job to delete rejected receipts from Convex storage.
-- [x] **Task 4.5.6: Collapsible Lists.** Convert Discrepancy cards and Pending Receipt cards to Accordions. Show only the header (Command, Rider, Amount) by default. Expand on click to show the resolution textarea or receipt image.
-- [x] **Task 4.5.7: "Collapse All" Button.** Add a button to the Discrepancies and Pending Receipts lists to instantly collapse all expanded cards.
-- [x] **Task 4.5.8: Discrepancy Search Box.** Add a search input to filter the Discrepancy list by Command Number or Rider Name.
-- [x] **Task 4.5.9: Collapsible Panel Sections.** Make the entire "Écarts de rapprochement" and "Preuves en attente" sections collapsible. Add a toggle button in the top right of their headers. Default them to collapsed.
+- [x] **Task 4.5.1: Toast Notifications.**
+- [x] **Task 4.5.2: Confirm Modals.**
+- [x] **Task 4.5.3: Pagination (Discrepancies/Receipts).**
+- [x] **Task 4.5.4: Audit Logs.**
+- [x] **Task 4.5.5: Orphaned File Cleanup.**
+- [x] **Task 4.5.6: Collapsible Cards.**
+- [x] **Task 4.5.7: "Collapse All" Button.**
+- [x] **Task 4.5.8: Discrepancy Search Box.**
+- [x] **Task 4.5.9: Collapsible Panel Sections.**
 
-## Milestone 5: Automation & Final Polish
-- [ ] **Task 5.1: Gmail API.** Implement push notifications to auto-import the Excel files.
-- [ ] **Task 5.2: End-to-End Testing.** Test the full flow: Rider enters -> Admin approves -> Excel imports -> Match succeeds/fails.
+## Milestone 6: Admin Intelligence & Internal Operations
+### 6.1 Team Management (Équipe)
+- [x] **Task 6.1.1:** Add a Search Box (filter by Name or Email).
+- [x] **Task 6.1.2:** Add Pagination ("Charger plus" button, 20 per page).
+- [x] **Task 6.1.3:** Add an "Edit Role" feature to promote a Rider to Supervisor.
+- [x] **Task 6.1.4:** Add Checkboxes for Bulk Actions (e.g., select 5 users and click "Désactiver").
+- [x] **Task 6.1.5:** Change "Delete" to "Archive" (soft delete) so financial history is preserved.
 
-## Milestone 6: Admin Intelligence & Efficiency
-- [ ] **Task 6.1: Rider 360 View.** Build a dedicated Admin page to view a rider's full daily stats and reset their password.
-- [ ] **Task 6.2: Smart Onboarding.** Add a dropdown to select an imported rider from the Excel file to create their account. Add bulk upload for markets.
-- [ ] **Task 6.3: City Filtering.** Add a `city` field to Markets and Riders. Add a city filter to the Admin dashboard.
+### 6.2 Markets Management (Marchés)
+- [ ] **Task 6.2.1:** Add a Search Box (filter by Name or External ID).
+- [ ] **Task 6.2.2:** Add an "Edit" button to fix market names/IDs.
+- [ ] **Task 6.2.3:** Add a "City" dropdown to the creation form and the table.
+- [ ] **Task 6.2.4:** Add an "Import Excel/CSV" button to bulk-create 50+ markets.
+- [ ] **Task 6.2.5:** Add Pagination ("Charger plus").
+
+### 6.3 Import Control (Imports Récents)
+- [ ] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").
+- [ ] **Task 6.3.2:** Add a "Delete Import" button that cascades to delete all related orders and discrepancies.
+- [ ] **Task 6.3.3:** Add a "Download Original File" link for auditing.
+
+### 6.4 Dashboards & Reporting
+- [ ] **Task 6.4.1:** Add a Date Picker to the Dashboard (view historical days).
+- [ ] **Task 6.4.2:** Add a "Export CSV" button for daily totals and discrepancies.
+- [ ] **Task 6.4.3:** Add a "Suivi des Livreurs" (Rider Tracking) section to the Supervisor dashboard to see live entries.
+
+### 6.5 Advanced Rider & Financial Edge Cases
+- [ ] **Task 6.5.1:** Build the Admin "Rider 360 View" (dedicated page showing rider stats and password reset).
+- [ ] **Task 6.5.2:** Implement "Write-Offs" (lost cash) with mandatory reason.
+- [ ] **Task 6.5.3:** Implement "Short Deposit" approval flow.
+- [ ] **Task 6.5.4:** Implement the Midnight Grace Period (00:00 - 03:00 AM counts for previous day).
+
+## Milestone 7: Automation & Final Polish (Previously Milestone 5)
+- [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.
+- [ ] **Task 7.2: End-to-End Testing.** Test the full flow with real data.
+- [ ] **Task 7.3: Production Deployment.** Deploy to Convex and Vercel/Netlify.

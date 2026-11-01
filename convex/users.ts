@@ -4,6 +4,7 @@ import { createAccount } from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
 import { getAppUser, requireAdmin } from './lib/auth';
 import { hasAdminProfile } from './lib/provisioning';
+import { insertAuditEvent } from './audit';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -43,20 +44,28 @@ export const getRegistrationStatus = query({
   }),
 });
 
-/** Team member accounts (riders and supervisors), joined with their auth user for the admin directory. */
+/**
+ * Team member accounts (riders and supervisors), joined with their auth user
+ * for the admin directory. Archived accounts are hidden unless explicitly
+ * requested with `includeArchived`.
+ */
 export const listTeamMembers = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { includeArchived: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
     await requireAdmin(ctx);
+
+    const includeArchived = args.includeArchived === true;
 
     const profiles = await ctx.db
       .query('userProfiles')
-      .filter((q) =>
-        q.or(
+      .filter((q) => {
+        const isTeamMember = q.or(
           q.eq(q.field('role'), 'rider'),
           q.eq(q.field('role'), 'supervisor')
-        )
-      )
+        );
+        if (includeArchived) return isTeamMember;
+        return q.and(isTeamMember, q.neq(q.field('isArchived'), true));
+      })
       .collect();
 
     const members = await Promise.all(
@@ -68,6 +77,7 @@ export const listTeamMembers = query({
           email: user?.email ?? null,
           role: profile.role,
           isActive: profile.isActive,
+          isArchived: profile.isArchived === true,
           createdAt: profile.createdAt,
         };
       })
@@ -200,8 +210,117 @@ export const setUserActive = mutation({
       .withIndex('userId', (q) => q.eq('userId', args.userId))
       .unique();
     if (!profile) throw new Error('Profile not found');
+    if (profile.isArchived) {
+      throw new Error('Archived accounts must be restored before reactivation');
+    }
 
     await ctx.db.patch(profile._id, { isActive: args.isActive, updatedAt: Date.now() });
+  },
+});
+
+/** Activate or deactivate several team members at once (bulk action). Archived members are skipped. */
+export const bulkSetUserActive = mutation({
+  args: {
+    userIds: v.array(v.id('users')),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireAdmin(ctx);
+    const userIds = Array.from(new Set(args.userIds));
+    if (userIds.length === 0) throw new Error('Aucun membre sélectionné');
+    if (!args.isActive && userIds.includes(appUser.userId)) {
+      throw new Error('Admins cannot deactivate themselves');
+    }
+
+    let updated = 0;
+    for (const userId of userIds) {
+      const profile = await ctx.db
+        .query('userProfiles')
+        .withIndex('userId', (q) => q.eq('userId', userId))
+        .unique();
+      if (!profile) continue;
+      // Archived accounts must be restored explicitly before their status changes.
+      if (profile.isArchived) continue;
+      await ctx.db.patch(profile._id, { isActive: args.isActive, updatedAt: Date.now() });
+      updated += 1;
+    }
+
+    return { updated };
+  },
+});
+
+/**
+ * Soft delete: hide a team member and block their login while preserving their
+ * financial history. Restoring always brings the account back inactive.
+ */
+export const archiveTeamMember = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    const appUser = await requireAdmin(ctx);
+    if (appUser.userId === args.userId) {
+      throw new Error('Admins cannot archive themselves');
+    }
+
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('userId', (q) => q.eq('userId', args.userId))
+      .unique();
+    if (!profile) throw new Error('Profile not found');
+    if (profile.role === 'admin') throw new Error('Admin accounts cannot be archived');
+    if (profile.isArchived) return { archived: false };
+
+    await ctx.db.patch(profile._id, {
+      isArchived: true,
+      isActive: false,
+      updatedAt: Date.now(),
+    });
+
+    await insertAuditEvent(ctx, {
+      actorId: appUser.userId,
+      action: 'user_archived',
+      targetType: 'users',
+      targetId: args.userId,
+      beforeSummary: {
+        role: profile.role,
+        isActive: profile.isActive,
+        isArchived: profile.isArchived ?? false,
+      },
+      afterSummary: { isActive: false, isArchived: true },
+    });
+
+    return { archived: true };
+  },
+});
+
+/** Lift a soft delete. The account returns inactive and must be reactivated. */
+export const restoreTeamMember = mutation({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    const appUser = await requireAdmin(ctx);
+
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('userId', (q) => q.eq('userId', args.userId))
+      .unique();
+    if (!profile) throw new Error('Profile not found');
+    if (!profile.isArchived) return { restored: false };
+
+    await ctx.db.patch(profile._id, {
+      isArchived: false,
+      isActive: false,
+      updatedAt: Date.now(),
+    });
+
+    await insertAuditEvent(ctx, {
+      actorId: appUser.userId,
+      action: 'user_restored',
+      targetType: 'users',
+      targetId: args.userId,
+      beforeSummary: { isActive: false, isArchived: true },
+      afterSummary: { isActive: false, isArchived: false },
+    });
+
+    return { restored: true };
   },
 });
 

@@ -43,6 +43,7 @@ export async function requireAppUser(ctx: DbCtx): Promise<AppUser> {
   const appUser = await getAppUser(ctx);
   if (!appUser) throw new Error('Unauthorized');
   if (!appUser.profile || !appUser.profile.isActive) throw new Error('Forbidden: inactive or unprovisioned user');
+  if (appUser.profile.isArchived) throw new Error('Forbidden: archived user');
   return appUser;
 }
 
