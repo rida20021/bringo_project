@@ -26,13 +26,16 @@
 - [x] **Task 4.2: Discrepancy Engine.** Logic to compare Rider Live Entries against Imported Excel.
 - [x] **Task 4.3: Admin Discrepancy Dashboard.** View showing flagged mismatches. Admin can mark them as "Resolved".
 
-## Milestone 4.5: Production Polish (Critical)
-- [ ] **Task 4.5.1: Toast Notifications.** Replace inline text with modern popup toasts (e.g., `sonner`).
-- [ ] **Task 4.5.2: Confirm Modals.** Add popups for destructive actions (Rejecting receipts, Deleting markets).
-- [ ] **Task 4.5.3: Pagination.** Add "Load More" buttons to the Discrepancies and Review queues.
-- [ ] **Task 4.5.4: Audit Logs.** Write to the `auditLogs` table on approvals, rejections, and imports.
-- [ ] **Task 4.5.5: Orphaned File Cleanup.** Add a Cron job to delete rejected receipts from Convex storage.
-- [ ] **Task 4.5.6: Collapsible Lists.** Convert Discrepancy cards and Pending Receipt cards to Accordions. Show only the header (Command, Rider, Amount) by default. Expand on click to show the resolution textarea or receipt image.
+## Milestone 4.5: Production Polish (Complete)
+- [x] **Task 4.5.1: Toast Notifications.** Replace inline text with modern popup toasts (e.g., `sonner`).
+- [x] **Task 4.5.2: Confirm Modals.** Add popups for destructive actions (Rejecting receipts, Deleting markets).
+- [x] **Task 4.5.3: Pagination.** Add "Load More" buttons to the Discrepancies and Review queues.
+- [x] **Task 4.5.4: Audit Logs.** Write to the `auditLogs` table on approvals, rejections, and imports.
+- [x] **Task 4.5.5: Orphaned File Cleanup.** Add a Cron job to delete rejected receipts from Convex storage.
+- [x] **Task 4.5.6: Collapsible Lists.** Convert Discrepancy cards and Pending Receipt cards to Accordions. Show only the header (Command, Rider, Amount) by default. Expand on click to show the resolution textarea or receipt image.
+- [x] **Task 4.5.7: "Collapse All" Button.** Add a button to the Discrepancies and Pending Receipts lists to instantly collapse all expanded cards.
+- [x] **Task 4.5.8: Discrepancy Search Box.** Add a search input to filter the Discrepancy list by Command Number or Rider Name.
+- [x] **Task 4.5.9: Collapsible Panel Sections.** Make the entire "Écarts de rapprochement" and "Preuves en attente" sections collapsible. Add a toggle button in the top right of their headers. Default them to collapsed.
 
 ## Milestone 5: Automation & Final Polish
 - [ ] **Task 5.1: Gmail API.** Implement push notifications to auto-import the Excel files.

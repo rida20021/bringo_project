@@ -31,6 +31,8 @@ export default function DiscrepanciesPanel() {
   const [pendingId, setPendingId] = useState<Id<'discrepancies'> | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const stats = useQuery(api.discrepancies.getDiscrepancyStats, {});
   const rows = useQuery(api.discrepancies.getDiscrepancies, { status });
@@ -84,8 +86,17 @@ export default function DiscrepanciesPanel() {
     }
   };
 
-  const displayed = rows?.slice(0, visibleCount) ?? [];
-  const hasMore = (rows?.length ?? 0) > visibleCount;
+  const filteredRows = (rows ?? []).filter((row) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      row.commandId.toLowerCase().includes(q) ||
+      row.riderName.toLowerCase().includes(q)
+    );
+  });
+
+  const displayed = filteredRows.slice(0, visibleCount);
+  const hasMore = filteredRows.length > visibleCount;
 
   return (
     <section className="panel" aria-labelledby="discrepancies-title">
@@ -96,12 +107,24 @@ export default function DiscrepanciesPanel() {
             Commandes absentes du fichier Excel ou dont le montant diffère.
           </p>
         </div>
-        <span className="panel-count">
-          {stats === undefined ? 'Chargement…' : `${stats.open} à traiter`}
-        </span>
+        <div className="panel-head-actions">
+          <span className="panel-count">
+            {stats === undefined ? 'Chargement…' : `${stats.open} à traiter`}
+          </span>
+          <button
+            type="button"
+            className="panel-toggle"
+            onClick={() => setIsPanelOpen((open) => !open)}
+            aria-label={isPanelOpen ? 'Replier la section' : 'Déplier la section'}
+          >
+            {isPanelOpen ? '▼' : '▶'}
+          </button>
+        </div>
       </header>
 
-      <div className="filter-tabs" role="group" aria-label="Filtrer les écarts">
+      {isPanelOpen && (
+        <>
+          <div className="filter-tabs" role="group" aria-label="Filtrer les écarts">
         <button
           type="button"
           className={`button-ghost${status === 'open' ? ' is-active' : ''}`}
@@ -118,6 +141,11 @@ export default function DiscrepanciesPanel() {
         >
           Résolus{stats === undefined ? '' : ` (${stats.resolved})`}
         </button>
+        {expandedIds.size > 0 ? (
+          <button type="button" className="button-ghost" onClick={() => setExpandedIds(new Set())}>
+            Tout replier
+          </button>
+        ) : null}
       </div>
 
       {rows === undefined ? (
@@ -133,7 +161,30 @@ export default function DiscrepanciesPanel() {
         </div>
       ) : (
         <>
-          <ul className="review-list">
+          <div className="field" style={{ marginBottom: 16 }}>
+            <input
+              type="text"
+              className="field"
+              placeholder="Rechercher par commande ou livreur…"
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setVisibleCount(PAGE_SIZE);
+                setExpandedIds(new Set());
+              }}
+            />
+          </div>
+
+          {filteredRows.length === 0 ? (
+            <div className="empty">
+              <p className="empty-title">Aucun résultat</p>
+              <p className="empty-text">
+                Essayez un autre terme de recherche.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ul className="review-list">
             {displayed.map((row) => {
               const isPending = pendingId === row._id;
               const rowError = errors[row._id];
@@ -233,11 +284,15 @@ export default function DiscrepanciesPanel() {
                 className="button-ghost"
                 onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
               >
-                Charger plus ({rows.length - visibleCount} restant(s))
+                Charger plus ({filteredRows.length - visibleCount} restant(s))
               </button>
             </div>
           ) : null}
+            </>
+          )}
         </>
+      )}
+    </>
       )}
     </section>
   );
