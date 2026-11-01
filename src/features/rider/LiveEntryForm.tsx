@@ -5,6 +5,7 @@ import { api } from '@convex/_generated/api';
 import type { Id } from '@convex/_generated/dataModel';
 import { formatMAD, paymentMethodLabels } from '@/lib/format';
 import { parseAmountToCentimes } from '@/lib/money';
+import { toast } from 'sonner';
 
 type PaymentMethod = 'cash' | 'tpe' | 'card';
 type ReceiptKind = 'tpe' | 'bank_deposit';
@@ -19,14 +20,6 @@ const ALLOWED_RECEIPT_TYPES = new Set([
 ]);
 
 const methods: PaymentMethod[] = ['cash', 'tpe', 'card'];
-
-function readError(error: unknown): string {
-  if (error instanceof Error) {
-    const match = error.message.match(/Uncaught Error:\s*(.+)$/);
-    return match ? match[1] : error.message;
-  }
-  return 'Une erreur est survenue. Réessayez.';
-}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -46,8 +39,6 @@ export default function LiveEntryForm() {
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const activeMarkets = markets ?? [];
@@ -64,14 +55,10 @@ export default function LiveEntryForm() {
     if (next === method) return;
     setMethod(next);
     resetFile();
-    setError(null);
-    setSuccess(null);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0] ?? null;
-    setError(null);
-    setSuccess(null);
     setFileError(null);
 
     if (!selected) {
@@ -95,29 +82,27 @@ export default function LiveEntryForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
-    setSuccess(null);
 
     const trimmedCommand = commandId.trim();
     if (!trimmedCommand) {
-      setError('Le numéro de commande est obligatoire.');
+      toast.error('Le numéro de commande est obligatoire.');
       return;
     }
     if (!marketId) {
-      setError('Sélectionnez un marché.');
+      toast.error('Sélectionnez un marché.');
       return;
     }
 
     const amountCentimes = parseAmountToCentimes(amount);
     if (amountCentimes === null) {
-      setError('Saisissez un montant valide supérieur à 0.');
+      toast.error('Saisissez un montant valide supérieur à 0.');
       return;
     }
 
     const kind: ReceiptKind | null =
       method === 'tpe' ? 'tpe' : method === 'cash' ? 'bank_deposit' : null;
     if (method === 'tpe' && !file) {
-      setError('Le reçu TPE est obligatoire pour un paiement TPE.');
+      toast.error('Le reçu TPE est obligatoire pour un paiement TPE.');
       return;
     }
 
@@ -159,13 +144,13 @@ export default function LiveEntryForm() {
         receipt,
       });
 
-      setSuccess(`Commande ${trimmedCommand} enregistrée (${formatMAD(amountCentimes)}).`);
+      toast.success(`Commande ${trimmedCommand} enregistrée (${formatMAD(amountCentimes)}).`);
       setCommandId('');
       setAmount('');
       setMethod('cash');
       resetFile();
     } catch (err) {
-      setError(readError(err));
+      toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
     } finally {
       setSubmitting(false);
     }
@@ -283,15 +268,6 @@ export default function LiveEntryForm() {
             Paiement en ligne via l’application Bringo : aucun justificatif requis.
           </p>
         )}
-
-        <div aria-live="polite">
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {success ? <p className="form-success">{success}</p> : null}
-        </div>
 
         <button
           type="submit"

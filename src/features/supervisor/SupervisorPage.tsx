@@ -6,6 +6,7 @@ import type { Id } from '@convex/_generated/dataModel';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatMAD } from '@/lib/format';
 import { parseAmountToCentimes } from '@/lib/money';
+import { toast } from 'sonner';
 
 const RECEIPT_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
 const ALLOWED_RECEIPT_TYPES = new Set([
@@ -15,14 +16,6 @@ const ALLOWED_RECEIPT_TYPES = new Set([
   'application/pdf',
 ]);
 const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
-
-function readError(error: unknown): string {
-  if (error instanceof Error) {
-    const match = error.message.match(/Uncaught Error:\s*(.+)$/);
-    return match ? match[1] : error.message;
-  }
-  return 'Une erreur est survenue. Réessayez.';
-}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -40,8 +33,6 @@ export default function SupervisorPage() {
   const [depositFile, setDepositFile] = useState<File | null>(null);
   const [depositFileKey, setDepositFileKey] = useState(0);
   const [depositFileError, setDepositFileError] = useState<string | null>(null);
-  const [depositError, setDepositError] = useState<string | null>(null);
-  const [depositSuccess, setDepositSuccess] = useState<string | null>(null);
   const [depositSubmitting, setDepositSubmitting] = useState(false);
 
   if (riders === undefined) return <LoadingSpinner />;
@@ -58,8 +49,6 @@ export default function SupervisorPage() {
 
   const handleDepositFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0] ?? null;
-    setDepositError(null);
-    setDepositSuccess(null);
     setDepositFileError(null);
 
     if (!selected) {
@@ -83,22 +72,20 @@ export default function SupervisorPage() {
 
   const handleDepositSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setDepositError(null);
-    setDepositSuccess(null);
 
     if (!depositRiderId) {
-      setDepositError('Sélectionnez un livreur.');
+      toast.error('Sélectionnez un livreur.');
       return;
     }
 
     const amountCentimes = parseAmountToCentimes(depositAmount);
     if (amountCentimes === null) {
-      setDepositError('Saisissez un montant valide supérieur à 0.');
+      toast.error('Saisissez un montant valide supérieur à 0.');
       return;
     }
 
     if (!depositFile) {
-      setDepositError('Joignez le reçu de dépôt bancaire.');
+      toast.error('Joignez le reçu de dépôt bancaire.');
       return;
     }
 
@@ -120,10 +107,10 @@ export default function SupervisorPage() {
         storageId: payload.storageId,
       });
 
-      setDepositSuccess(`Dépôt de ${formatMAD(amountCentimes)} enregistré. Il sera examiné par l’administration.`);
+      toast.success(`Dépôt de ${formatMAD(amountCentimes)} enregistré.`);
       resetDepositForm();
     } catch (err) {
-      setDepositError(readError(err));
+      toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
     } finally {
       setDepositSubmitting(false);
     }
@@ -155,11 +142,7 @@ export default function SupervisorPage() {
             <select
               name="riderId"
               value={depositRiderId}
-              onChange={(event) => {
-                setDepositRiderId(event.target.value);
-                setDepositError(null);
-                setDepositSuccess(null);
-              }}
+              onChange={(event) => setDepositRiderId(event.target.value)}
               disabled={activeRiders.length === 0}
             >
               <option value="">
@@ -181,11 +164,7 @@ export default function SupervisorPage() {
               type="text"
               name="amount"
               value={depositAmount}
-              onChange={(event) => {
-                setDepositAmount(event.target.value);
-                setDepositError(null);
-                setDepositSuccess(null);
-              }}
+              onChange={(event) => setDepositAmount(event.target.value)}
               placeholder="0,00"
               inputMode="decimal"
               autoComplete="off"
@@ -215,15 +194,6 @@ export default function SupervisorPage() {
               </span>
             ) : null}
           </label>
-
-          <div aria-live="polite">
-            {depositError ? (
-              <p className="form-error" role="alert">
-                {depositError}
-              </p>
-            ) : null}
-            {depositSuccess ? <p className="form-success">{depositSuccess}</p> : null}
-          </div>
 
           <button
             type="submit"

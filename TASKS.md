@@ -32,6 +32,7 @@
 - [ ] **Task 4.5.3: Pagination.** Add "Load More" buttons to the Discrepancies and Review queues.
 - [ ] **Task 4.5.4: Audit Logs.** Write to the `auditLogs` table on approvals, rejections, and imports.
 - [ ] **Task 4.5.5: Orphaned File Cleanup.** Add a Cron job to delete rejected receipts from Convex storage.
+- [ ] **Task 4.5.6: Collapsible Lists.** Convert Discrepancy cards and Pending Receipt cards to Accordions. Show only the header (Command, Rider, Amount) by default. Expand on click to show the resolution textarea or receipt image.
 
 ## Milestone 5: Automation & Final Polish
 - [ ] **Task 5.1: Gmail API.** Implement push notifications to auto-import the Excel files.

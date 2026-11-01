@@ -12,8 +12,17 @@ export const scheduledGmailSync = internalAction({
   },
 });
 
+export const scheduledRejectedCleanup = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.runMutation(internal.receipts.cleanupRejectedReceipts, {});
+  },
+});
+
 const crons = cronJobs();
 
 crons.interval('scheduled-gmail-sync', { minutes: 1 }, internal.crons.scheduledGmailSync);
+
+crons.interval('scheduled-rejected-cleanup', { hours: 24 }, internal.crons.scheduledRejectedCleanup);
 
 export default crons;

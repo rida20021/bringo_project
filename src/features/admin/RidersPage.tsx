@@ -4,16 +4,9 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatShortDate } from '@/lib/format';
+import { toast } from 'sonner';
 
 const MIN_PASSWORD_LENGTH = 8;
-
-function readError(error: unknown): string {
-  if (error instanceof Error) {
-    const match = error.message.match(/Uncaught Error:\s*(.+)$/);
-    return match ? match[1] : error.message;
-  }
-  return 'Une erreur est survenue. Réessayez.';
-}
 
 const roleLabel: Record<string, string> = {
   rider: 'Livreur',
@@ -29,34 +22,26 @@ export default function RidersPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'rider' | 'supervisor'>('rider');
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   if (members === undefined) return <LoadingSpinner />;
 
-  const resetFeedback = () => {
-    setError(null);
-    setSuccess(null);
-  };
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    resetFeedback();
 
     const trimmedName = displayName.trim();
     const trimmedEmail = email.trim();
 
     if (!trimmedName) {
-      setError('Le nom est obligatoire.');
+      toast.error('Le nom est obligatoire.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError('Saisissez une adresse e-mail valide.');
+      toast.error('Saisissez une adresse e-mail valide.');
       return;
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`);
+      toast.error(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`);
       return;
     }
 
@@ -68,29 +53,29 @@ export default function RidersPage() {
         password,
         role,
       });
-      setSuccess(
-        `Compte ${roleLabel[role].toLowerCase()} « ${trimmedName} » créé. Transmettez-lui son e-mail et son mot de passe.`
+      toast.success(
+        `Compte ${roleLabel[role].toLowerCase()} « ${trimmedName} » créé.`
       );
       setDisplayName('');
       setEmail('');
       setPassword('');
       setRole('rider');
     } catch (err) {
-      setError(readError(err));
+      toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
     } finally {
       setPending(false);
     }
   };
 
   const handleToggleActive = async (member: (typeof members)[number]) => {
-    resetFeedback();
+    const action = member.isActive ? 'désactiver' : 'réactiver';
+    if (!window.confirm(`Êtes-vous sûr de vouloir ${action} le compte de ${member.displayName} ?`)) return;
+
     try {
       await setUserActive({ userId: member.userId, isActive: !member.isActive });
-      setSuccess(
-        `Compte de ${member.displayName} ${member.isActive ? 'désactivé' : 'réactivé'}.`
-      );
+      toast.success(`Compte de ${member.displayName} ${member.isActive ? 'désactivé' : 'réactivé'}.`);
     } catch (err) {
-      setError(readError(err));
+      toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
     }
   };
 
@@ -176,15 +161,6 @@ export default function RidersPage() {
             {pending ? 'Création…' : 'Créer le compte'}
           </button>
         </form>
-
-        <div aria-live="polite">
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {success ? <p className="form-success">{success}</p> : null}
-        </div>
       </section>
 
       <section className="panel">

@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel } from './_generated/dataModel';
 import { requireAdmin, requireAppUser, requireSupervisor } from './lib/auth';
+import { insertAuditEvent } from './audit';
 
 /**
  * Supervisor or Admin records a bank deposit tied to a rider.
@@ -26,7 +27,7 @@ export const createBankDeposit = mutation({
     const stored = await ctx.db.system.get('_storage', args.storageId);
     if (!stored) throw new Error('Receipt file not found in storage');
 
-    return ctx.db.insert('bankDeposits', {
+    const depositId = await ctx.db.insert('bankDeposits', {
       amount: args.amount,
       depositDate: Date.now(),
       depositedBy: appUser.userId,
@@ -35,6 +36,16 @@ export const createBankDeposit = mutation({
       evidenceStorageIds: [args.storageId],
       createdAt: Date.now(),
     });
+
+    await insertAuditEvent(ctx, {
+      actorId: appUser.userId,
+      action: 'deposit.created',
+      targetType: 'bankDeposits',
+      targetId: depositId,
+      afterSummary: { amount: args.amount, riderId: args.riderId, status: 'pending_review' },
+    });
+
+    return depositId;
   },
 });
 

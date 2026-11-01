@@ -290,7 +290,7 @@ export default defineSchema({
     actorId: v.id('users'),
     action: v.string(),
     targetType: v.string(),
-    targetId: v.union(v.id('users'), v.id('orders'), v.id('cashCollections'), v.id('bankDeposits'), v.id('tpeReceipts'), v.id('importBatches'), v.id('riders')),
+    targetId: v.union(v.id('users'), v.id('orders'), v.id('cashCollections'), v.id('bankDeposits'), v.id('tpeReceipts'), v.id('importBatches'), v.id('riders'), v.id('liveEntryReceipts'), v.id('discrepancies')),
     timestamp: v.number(),
     reason: v.optional(v.string()),
     beforeSummary: v.optional(v.any()),

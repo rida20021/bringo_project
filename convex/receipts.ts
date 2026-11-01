@@ -1,8 +1,9 @@
-import { mutation, query } from './_generated/server';
+import { internalMutation, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import type { MutationCtx } from './_generated/server';
 import { requireAdmin, requireAppUser, requireRider, requireSupervisor } from './lib/auth';
+import { insertAuditEvent } from './audit';
 
 export const ALLOWED_RECEIPT_MIME_TYPES = [
   'image/jpeg',
@@ -223,6 +224,14 @@ export const approveReceipt = mutation({
       rejectionReason: undefined,
     });
 
+    await insertAuditEvent(ctx, {
+      actorId: admin.userId,
+      action: 'receipt.approved',
+      targetType: 'liveEntryReceipts',
+      targetId: receiptId,
+      afterSummary: { status: 'approved' },
+    });
+
     return receiptId;
   },
 });
@@ -252,6 +261,38 @@ export const rejectReceipt = mutation({
       rejectionReason: reason,
     });
 
+    await insertAuditEvent(ctx, {
+      actorId: admin.userId,
+      action: 'receipt.rejected',
+      targetType: 'liveEntryReceipts',
+      targetId: receiptId,
+      reason: reason,
+      afterSummary: { status: 'rejected' },
+    });
+
     return receiptId;
+  },
+});
+
+/** Daily cleanup: delete storage files and DB records for rejected receipts older than 30 days. */
+export const cleanupRejectedReceipts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+    const rejected = await ctx.db
+      .query('liveEntryReceipts')
+      .withIndex('status', (q) => q.eq('status', 'rejected'))
+      .filter((q) => q.lt(q.field('createdAt'), thirtyDaysAgo))
+      .collect();
+
+    let deleted = 0;
+    for (const receipt of rejected) {
+      await ctx.storage.delete(receipt.storageId);
+      await ctx.db.delete(receipt._id);
+      deleted++;
+    }
+
+    return { deleted };
   },
 });

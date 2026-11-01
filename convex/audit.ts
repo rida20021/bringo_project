@@ -1,8 +1,30 @@
 import { query, internalMutation } from './_generated/server';
+import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel } from './_generated/dataModel';
+import type { Id } from './_generated/dataModel';
 import { requireAdmin } from './lib/auth';
+
+/** Directly insert an audit event from any mutation without the internal-mutation dance. */
+export async function insertAuditEvent(
+  ctx: MutationCtx,
+  args: {
+    actorId: Id<'users'>;
+    action: string;
+    targetType: string;
+    targetId: Id<'users'> | Id<'orders'> | Id<'cashCollections'> | Id<'bankDeposits'> | Id<'tpeReceipts'> | Id<'importBatches'> | Id<'riders'> | Id<'liveEntryReceipts'> | Id<'discrepancies'>;
+    reason?: string;
+    beforeSummary?: unknown;
+    afterSummary?: unknown;
+    correlationId?: string;
+  }
+): Promise<Id<'auditEvents'>> {
+  return ctx.db.insert('auditEvents', {
+    ...args,
+    timestamp: Date.now(),
+  });
+}
 
 const targetIdValidator = v.union(
   v.id('users'),
@@ -11,7 +33,9 @@ const targetIdValidator = v.union(
   v.id('bankDeposits'),
   v.id('tpeReceipts'),
   v.id('importBatches'),
-  v.id('riders')
+  v.id('riders'),
+  v.id('liveEntryReceipts'),
+  v.id('discrepancies')
 );
 
 export const logAuditEvent = internalMutation({
