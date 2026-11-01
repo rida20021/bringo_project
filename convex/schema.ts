@@ -18,7 +18,7 @@ export default defineSchema({
      * created. The auth callback consumes it and clears it immediately, so it
      * never persists or reaches clients.
      */
-    provisioningRole: v.optional(v.literal('rider')),
+    provisioningRole: v.optional(v.union(v.literal('rider'), v.literal('supervisor'))),
   }).index('email', ['email'])
     .index('phone', ['phone']),
 

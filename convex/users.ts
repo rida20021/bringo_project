@@ -43,31 +43,37 @@ export const getRegistrationStatus = query({
   }),
 });
 
-/** Rider accounts, joined with their auth user for the admin directory. */
-export const listRiderUsers = query({
+/** Team member accounts (riders and supervisors), joined with their auth user for the admin directory. */
+export const listTeamMembers = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
     const profiles = await ctx.db
       .query('userProfiles')
-      .withIndex('role', (q) => q.eq('role', 'rider'))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field('role'), 'rider'),
+          q.eq(q.field('role'), 'supervisor')
+        )
+      )
       .collect();
 
-    const riders = await Promise.all(
+    const members = await Promise.all(
       profiles.map(async (profile) => {
         const user = await ctx.db.get(profile.userId);
         return {
           userId: profile.userId,
           displayName: profile.displayName,
           email: user?.email ?? null,
+          role: profile.role,
           isActive: profile.isActive,
           createdAt: profile.createdAt,
         };
       })
     );
 
-    return riders.sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'));
+    return members.sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'));
   },
 });
 
@@ -108,23 +114,24 @@ export const createUser = mutation({
 });
 
 /**
- * Admin-only action creating a rider end to end. `createAccount` must run in an
- * action because it hashes the password and calls the internal auth mutation;
- * the rider profile is inserted from the `afterUserCreatedOrUpdated` callback,
- * in the same transaction as the auth user.
+ * Admin-only action creating a team member end to end (rider or supervisor).
+ * `createAccount` must run in an action because it hashes the password and
+ * calls the internal auth mutation; the profile is inserted from the
+ * `afterUserCreatedOrUpdated` callback, in the same transaction as the auth user.
  */
-export const createRiderAccount = action({
+export const createTeamMember = action({
   args: {
     displayName: v.string(),
     email: v.string(),
     password: v.string(),
+    role: v.union(v.literal('rider'), v.literal('supervisor')),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal.users.getCallerRole, {});
 
     const displayName = args.displayName.trim();
     if (displayName.length < 2 || displayName.length > MAX_DISPLAY_NAME_LENGTH) {
-      throw new Error(`Rider name must be between 2 and ${MAX_DISPLAY_NAME_LENGTH} characters`);
+      throw new Error(`Display name must be between 2 and ${MAX_DISPLAY_NAME_LENGTH} characters`);
     }
 
     const email = args.email.trim().toLowerCase();
@@ -150,7 +157,7 @@ export const createRiderAccount = action({
       profile: {
         email,
         name: displayName,
-        provisioningRole: 'rider',
+        provisioningRole: args.role,
       },
     });
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { useQuery } from 'convex/react';
@@ -14,21 +15,29 @@ export default function Layout() {
   const { signOut } = useAuthActions();
   const navigate = useNavigate();
   const user = useQuery(api.users.getCurrentUser);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   if (user === undefined) return <LoadingSpinner />;
 
   const isAdmin = user?.role === 'admin';
   const displayName = user?.displayName ?? user?.email ?? 'Utilisateur';
-  const navItems: NavItem[] = [
+
+  const sharedItems: NavItem[] = [
     { to: '/supervisor/dashboard', label: 'Tableau de bord' },
-    ...(isAdmin
-      ? [
-          { to: '/admin/dashboard', label: 'Vue d’ensemble' },
-          { to: '/admin/markets', label: 'Marchés' },
-          { to: '/admin/riders', label: 'Livreurs' },
-        ]
-      : []),
+    { to: '/admin/dashboard', label: 'Vue d’ensemble' },
+    { to: '/supervisor/supervision', label: 'Supervision' },
   ];
+
+  const adminItems: NavItem[] = [
+    { to: '/admin/markets', label: 'Marchés' },
+    { to: '/admin/riders', label: 'Équipe' },
+  ];
+
+  const navItems: NavItem[] = isAdmin
+    ? [...sharedItems, ...adminItems]
+    : sharedItems;
 
   const handleSignOut = async () => {
     await signOut();
@@ -41,7 +50,16 @@ export default function Layout() {
         Aller au contenu
       </a>
 
-      <aside className="rail">
+      {/* Sidebar backdrop — closes sidebar when tapped on mobile */}
+      {isSidebarOpen ? (
+        <div
+          className="sidebar-backdrop is-visible"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      <aside className={`rail${isSidebarOpen ? ' is-open' : ''}`}>
         <div className="rail-brand">
           <span className="brand-mark" aria-hidden="true">
             B
@@ -61,6 +79,7 @@ export default function Layout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) => `rail-link${isActive ? ' is-active' : ''}`}
+              onClick={closeSidebar}
             >
               {item.label}
             </NavLink>
@@ -87,6 +106,14 @@ export default function Layout() {
 
       <div className="workspace">
         <header className="topbar">
+          <button
+            type="button"
+            className="hamburger-btn"
+            onClick={() => setIsSidebarOpen((open) => !open)}
+            aria-label="Menu"
+          >
+            ☰
+          </button>
           <span className="topbar-context">
             {isAdmin ? 'Administration' : 'Supervision'}
           </span>

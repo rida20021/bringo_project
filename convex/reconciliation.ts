@@ -1,6 +1,6 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
-import { requireAdmin, requireSupervisor } from './lib/auth';
+import { requireSupervisor } from './lib/auth';
 
 export const getSupervisorDashboardData = query({
   args: { reportDate: v.optional(v.number()) },
@@ -95,7 +95,7 @@ export const getSupervisorDashboardData = query({
 export const getAdminDashboardData = query({
   args: { fromDate: v.optional(v.number()), toDate: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireSupervisor(ctx);
     const from = args.fromDate || getStartOfDayCasablanca(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const to = args.toDate || getEndOfDayCasablanca(Date.now());
 

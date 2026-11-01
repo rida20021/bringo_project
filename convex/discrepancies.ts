@@ -2,7 +2,7 @@ import { internalMutation, mutation, query } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
-import { requireAdmin } from './lib/auth';
+import { requireAdmin, requireSupervisor } from './lib/auth';
 import { startOfDayCasablanca } from './lib/dates';
 import { normalizeCommandKey } from './lib/tiktakValues';
 
@@ -162,7 +162,7 @@ export const getDiscrepancies = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireSupervisor(ctx);
 
     const limit = Math.min(
       Math.max(Math.floor(args.limit ?? DEFAULT_LIST_LIMIT), 1),
@@ -196,7 +196,7 @@ export const getDiscrepancies = query({
 export const getDiscrepancyStats = query({
   args: { reportDate: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireSupervisor(ctx);
 
     const reportDate = args.reportDate;
     const docs =

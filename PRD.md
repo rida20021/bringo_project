@@ -15,7 +15,7 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Apply Bringo brand colors for a professional UI.
 
 ## 4. Users and Permissions
-### 4.1 Rider (New)
+### 4.1 Rider
 - Can log in via mobile web.
 - Can manually input: Command Number, Market (selected from a database), Amount, and Payment Method (`cash`, `tpe`, `card`).
 - Can upload evidence: TPE receipt (immediate) or Bank Deposit receipt (when depositing cash).
@@ -33,6 +33,7 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Reviews the "Next-Day Reconciliation" dashboard to see discrepancies between Rider live entries and the Excel file.
 - Approves/rejects all bank-deposit and TPE receipts.
 - Manages the `markets` database and user roles.
+- Can reset Rider passwords.
 
 ## 5. Scope
 ### In Scope
@@ -71,6 +72,9 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **Review Queue:** Pending TPE receipts and Bank Deposits.
 - **Totals:** Cash in hand, Deposited, TPE pending.
 - **Excel Import Status:** Logs of parsed files.
+- **Rider 360 View:** A dedicated page to view a specific Rider's daily performance (Commands, Cash collected, TPE receipts, Discrepancies) and reset their password.
+- **Smart Onboarding:** Admin can create an account by selecting an unverified Rider from the imported Excel data. Bulk upload for markets and team members.
+- **City Filtering:** Admin can assign a City to a Market and a Rider. Dashboards can be filtered by City.
 
 ## 8. Business Rules & Calculations
 ### 8.1 Payment Methods
@@ -90,7 +94,7 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
   - Primary: `#4a397e` (Deep Purple)
   - Accent/Buttons: `#eab818` (Gold/Yellow)
 - **Backend:** Convex.
-- **Database Tables:** `users`, `userProfiles`, `markets`, `orders` (Live & Excel), `collections`, `deposits`, `tpeReceipts`, `discrepancies`, `auditLogs`.
+- **Database Tables:** `users`, `userProfiles`, `markets`, `orders`, `collections`, `deposits`, `tpeReceipts`, `discrepancies`, `auditLogs`.
 - **Email Ingestion:** Gmail API via Convex HTTP actions.
 
 ## 10. Acceptance Criteria

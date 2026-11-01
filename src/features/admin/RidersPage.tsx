@@ -15,19 +15,25 @@ function readError(error: unknown): string {
   return 'Une erreur est survenue. Réessayez.';
 }
 
+const roleLabel: Record<string, string> = {
+  rider: 'Livreur',
+  supervisor: 'Superviseur',
+};
+
 export default function RidersPage() {
-  const riders = useQuery(api.users.listRiderUsers, {});
-  const createRiderAccount = useAction(api.users.createRiderAccount);
+  const members = useQuery(api.users.listTeamMembers, {});
+  const createTeamMember = useAction(api.users.createTeamMember);
   const setUserActive = useMutation(api.users.setUserActive);
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'rider' | 'supervisor'>('rider');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  if (riders === undefined) return <LoadingSpinner />;
+  if (members === undefined) return <LoadingSpinner />;
 
   const resetFeedback = () => {
     setError(null);
@@ -42,7 +48,7 @@ export default function RidersPage() {
     const trimmedEmail = email.trim();
 
     if (!trimmedName) {
-      setError('Le nom du livreur est obligatoire.');
+      setError('Le nom est obligatoire.');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
@@ -56,17 +62,19 @@ export default function RidersPage() {
 
     setPending(true);
     try {
-      await createRiderAccount({
+      await createTeamMember({
         displayName: trimmedName,
         email: trimmedEmail,
         password,
+        role,
       });
       setSuccess(
-        `Compte livreur « ${trimmedName} » créé. Transmettez-lui son e-mail et son mot de passe.`
+        `Compte ${roleLabel[role].toLowerCase()} « ${trimmedName} » créé. Transmettez-lui son e-mail et son mot de passe.`
       );
       setDisplayName('');
       setEmail('');
       setPassword('');
+      setRole('rider');
     } catch (err) {
       setError(readError(err));
     } finally {
@@ -74,39 +82,39 @@ export default function RidersPage() {
     }
   };
 
-  const handleToggleActive = async (rider: (typeof riders)[number]) => {
+  const handleToggleActive = async (member: (typeof members)[number]) => {
     resetFeedback();
     try {
-      await setUserActive({ userId: rider.userId, isActive: !rider.isActive });
+      await setUserActive({ userId: member.userId, isActive: !member.isActive });
       setSuccess(
-        `Compte de ${rider.displayName} ${rider.isActive ? 'désactivé' : 'réactivé'}.`
+        `Compte de ${member.displayName} ${member.isActive ? 'désactivé' : 'réactivé'}.`
       );
     } catch (err) {
       setError(readError(err));
     }
   };
 
-  const activeCount = riders.filter((rider) => rider.isActive).length;
+  const activeCount = members.filter((m) => m.isActive).length;
 
   return (
     <div className="page">
       <header className="page-head">
         <div>
-          <h1>Livreurs</h1>
+          <h1>Équipe</h1>
           <p className="page-sub">
-            Les comptes livreurs sont créés par l’administration. L’inscription publique est
+            Les comptes sont créés par l’administration. L’inscription publique est
             désactivée dès qu’un administrateur existe.
           </p>
         </div>
         <span className="page-tag">
-          {activeCount} actif(s) / {riders.length}
+          {activeCount} actif(s) / {members.length}
         </span>
       </header>
 
       <section className="panel">
         <header className="panel-head">
           <div>
-            <h2>Créer un compte livreur</h2>
+            <h2>Créer un compte</h2>
             <p className="panel-sub">
               Le mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères.
             </p>
@@ -133,7 +141,7 @@ export default function RidersPage() {
               name="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="livreur@bringo.ma"
+              placeholder="membre@bringo.ma"
               autoComplete="off"
             />
           </label>
@@ -150,8 +158,22 @@ export default function RidersPage() {
             />
           </label>
 
+          <label className="field">
+            <span className="field-label">Rôle</span>
+            <select
+              name="role"
+              value={role}
+              onChange={(event) =>
+                setRole(event.target.value as 'rider' | 'supervisor')
+              }
+            >
+              <option value="rider">Livreur</option>
+              <option value="supervisor">Superviseur</option>
+            </select>
+          </label>
+
           <button type="submit" className="button button-primary" disabled={pending}>
-            {pending ? 'Création…' : 'Créer le livreur'}
+            {pending ? 'Création…' : 'Créer le compte'}
           </button>
         </form>
 
@@ -168,20 +190,19 @@ export default function RidersPage() {
       <section className="panel">
         <header className="panel-head">
           <div>
-            <h2>Comptes livreurs</h2>
+            <h2>Membres de l’équipe</h2>
             <p className="panel-sub">
-              Un compte désactivé ne peut plus se connecter ni saisir de commandes.
+              Un compte désactivé ne peut plus se connecter.
             </p>
           </div>
-          <span className="panel-count">{riders.length} livreur(s)</span>
+          <span className="panel-count">{members.length} membre(s)</span>
         </header>
 
-        {riders.length === 0 ? (
+        {members.length === 0 ? (
           <div className="empty">
-            <p className="empty-title">Aucun livreur enregistré</p>
+            <p className="empty-title">Aucun membre enregistré</p>
             <p className="empty-text">
-              Créez le premier compte avec le formulaire ci-dessus : le livreur pourra
-              ensuite se connecter sur son espace mobile.
+              Créez le premier compte avec le formulaire ci-dessus.
             </p>
           </div>
         ) : (
@@ -191,21 +212,32 @@ export default function RidersPage() {
                 <tr>
                   <th scope="col">Nom</th>
                   <th scope="col">E-mail</th>
+                  <th scope="col">Rôle</th>
                   <th scope="col">Créé le</th>
                   <th scope="col">État</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {riders.map((rider) => (
-                  <tr key={rider.userId}>
-                    <td>{rider.displayName}</td>
-                    <td className="table-muted">{rider.email ?? '—'}</td>
-                    <td className="table-muted">{formatShortDate(rider.createdAt)}</td>
+                {members.map((member) => (
+                  <tr key={member.userId}>
+                    <td>{member.displayName}</td>
+                    <td className="table-muted">{member.email ?? '—'}</td>
                     <td>
-                      <span className={`badge ${rider.isActive ? 'badge-ok' : 'badge-neutral'}`}>
+                      <span
+                        className={`badge ${
+                          member.role === 'supervisor' ? 'badge-ok' : 'badge-pending'
+                        }`}
+                      >
                         <span className="badge-dot" aria-hidden="true" />
-                        {rider.isActive ? 'Actif' : 'Inactif'}
+                        {roleLabel[member.role] ?? member.role}
+                      </span>
+                    </td>
+                    <td className="table-muted">{formatShortDate(member.createdAt)}</td>
+                    <td>
+                      <span className={`badge ${member.isActive ? 'badge-ok' : 'badge-neutral'}`}>
+                        <span className="badge-dot" aria-hidden="true" />
+                        {member.isActive ? 'Actif' : 'Inactif'}
                       </span>
                     </td>
                     <td>
@@ -213,9 +245,9 @@ export default function RidersPage() {
                         <button
                           type="button"
                           className="button-ghost"
-                          onClick={() => handleToggleActive(rider)}
+                          onClick={() => handleToggleActive(member)}
                         >
-                          {rider.isActive ? 'Désactiver' : 'Réactiver'}
+                          {member.isActive ? 'Désactiver' : 'Réactiver'}
                         </button>
                       </div>
                     </td>

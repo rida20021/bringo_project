@@ -1,7 +1,7 @@
 import { convexAuth } from '@convex-dev/auth/server';
 import { Password } from '@convex-dev/auth/providers/Password';
 import type { MutationCtx } from './_generated/server';
-import { hasAdminProfile, provisionRiderProfile } from './lib/provisioning';
+import { hasAdminProfile, provisionProfile } from './lib/provisioning';
 
 export const { auth, signIn, signOut, store } = convexAuth({
   providers: [
@@ -46,13 +46,14 @@ export const { auth, signIn, signOut, store } = convexAuth({
       // the real one at runtime.
       const dbCtx = ctx as unknown as MutationCtx;
 
-      if (args.profile.provisioningRole === 'rider') {
+      if (args.profile.provisioningRole === 'rider' || args.profile.provisioningRole === 'supervisor') {
         const name = typeof args.profile.name === 'string' ? args.profile.name : '';
         const email = typeof args.profile.email === 'string' ? args.profile.email : '';
-        await provisionRiderProfile(dbCtx, {
+        await provisionProfile(dbCtx, {
           userId: args.userId,
           displayName: name || email,
           email,
+          role: args.profile.provisioningRole,
         });
         return;
       }

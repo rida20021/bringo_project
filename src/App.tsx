@@ -7,6 +7,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import LoginPage from './features/auth/LoginPage';
 import SetupPage from './features/auth/SetupPage';
 import SupervisorDashboard from './features/supervisor/SupervisorDashboard';
+import SupervisorPage from './features/supervisor/SupervisorPage';
 import AdminDashboard from './features/admin/AdminDashboard';
 import MarketsPage from './features/admin/MarketsPage';
 import RidersPage from './features/admin/RidersPage';
@@ -99,19 +100,20 @@ export default function App() {
         >
           <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
           <Route path="dashboard" element={<SupervisorDashboard />} />
+          <Route path="supervision" element={<SupervisorPage />} />
         </Route>
         <Route
           path="/admin/*"
           element={
-            <AdminRoute>
+            <SupervisorRoute>
               <Outlet />
-            </AdminRoute>
+            </SupervisorRoute>
           }
         >
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="markets" element={<MarketsPage />} />
-          <Route path="riders" element={<RidersPage />} />
+          <Route path="markets" element={<AdminRoute><MarketsPage /></AdminRoute>} />
+          <Route path="riders" element={<AdminRoute><RidersPage /></AdminRoute>} />
         </Route>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />

@@ -11,23 +11,24 @@ export async function hasAdminProfile(ctx: DbCtx): Promise<boolean> {
   return admin !== null;
 }
 
-export interface ProvisionRiderArgs {
+export interface ProvisionArgs {
   userId: Id<'users'>;
   displayName: string;
   email: string;
+  role: 'rider' | 'supervisor';
 }
 
 /**
- * Create the rider profile belonging to an auth user and clear the internal
- * `provisioningRole` marker.
+ * Create a team member profile (rider or supervisor) belonging to an auth user
+ * and clear the internal `provisioningRole` marker.
  *
  * Called from the `afterUserCreatedOrUpdated` auth callback, which runs inside
  * the same `auth:store` mutation as the user insert: if this throws, the auth
  * user and its password account are rolled back too.
  */
-export async function provisionRiderProfile(
+export async function provisionProfile(
   ctx: MutationCtx,
-  args: ProvisionRiderArgs
+  args: ProvisionArgs
 ): Promise<Id<'userProfiles'>> {
   const existing = await ctx.db
     .query('userProfiles')
@@ -43,7 +44,7 @@ export async function provisionRiderProfile(
 
   const profileId = await ctx.db.insert('userProfiles', {
     userId: args.userId,
-    role: 'rider',
+    role: args.role,
     displayName,
     isActive: true,
     createdAt: now,

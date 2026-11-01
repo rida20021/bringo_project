@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import schema from '../schema';
 import { api } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
-import { hasAdminProfile, provisionRiderProfile } from '../lib/provisioning';
+import { hasAdminProfile, provisionProfile } from '../lib/provisioning';
 
 const modules = import.meta.glob([
   '../**/*.ts',
@@ -42,10 +42,11 @@ async function createProfile(t: T, role: TestRole): Promise<Id<'users'>> {
   });
 }
 
-const validRiderArgs = {
+const validMemberArgs = {
   displayName: 'Nouveau Livreur',
   email: 'nouveau.livreur@bringo.test',
   password: 'motdepasse123',
+  role: 'rider' as const,
 };
 
 describe('closed registration', () => {
@@ -71,11 +72,11 @@ describe('closed registration', () => {
   });
 });
 
-describe('createRiderAccount authorization and validation', () => {
+describe('createTeamMember authorization and validation', () => {
   it('rejects unauthenticated callers', async () => {
     const t = makeT();
 
-    await expect(t.action(api.users.createRiderAccount, validRiderArgs)).rejects.toThrow(
+    await expect(t.action(api.users.createTeamMember, validMemberArgs)).rejects.toThrow(
       /Unauthorized|Forbidden/
     );
   });
@@ -88,13 +89,13 @@ describe('createRiderAccount authorization and validation', () => {
     await expect(
       t
         .withIdentity({ subject: supervisorId, email: 'supervisor@bringo.test' })
-        .action(api.users.createRiderAccount, validRiderArgs)
+        .action(api.users.createTeamMember, validMemberArgs)
     ).rejects.toThrow(/Forbidden/);
 
     await expect(
       t
         .withIdentity({ subject: riderId, email: 'rider@bringo.test' })
-        .action(api.users.createRiderAccount, validRiderArgs)
+        .action(api.users.createTeamMember, validMemberArgs)
     ).rejects.toThrow(/Forbidden/);
   });
 
@@ -104,15 +105,15 @@ describe('createRiderAccount authorization and validation', () => {
     const admin = t.withIdentity({ subject: adminId, email: 'admin@bringo.test' });
 
     await expect(
-      admin.action(api.users.createRiderAccount, { ...validRiderArgs, displayName: 'X' })
+      admin.action(api.users.createTeamMember, { ...validMemberArgs, displayName: 'X' })
     ).rejects.toThrow(/name/);
 
     await expect(
-      admin.action(api.users.createRiderAccount, { ...validRiderArgs, email: 'invalid' })
+      admin.action(api.users.createTeamMember, { ...validMemberArgs, email: 'invalid' })
     ).rejects.toThrow(/email/);
 
     await expect(
-      admin.action(api.users.createRiderAccount, { ...validRiderArgs, password: 'short' })
+      admin.action(api.users.createTeamMember, { ...validMemberArgs, password: 'short' })
     ).rejects.toThrow(/between 8 and 128/);
 
     const users = await t.run(async (ctx) => ctx.db.query('users').collect());
@@ -120,26 +121,28 @@ describe('createRiderAccount authorization and validation', () => {
   });
 });
 
-describe('listRiderUsers', () => {
-  it('lists only riders and is admin-only', async () => {
+describe('listTeamMembers', () => {
+  it('lists riders and supervisors, admin-only', async () => {
     const t = makeT();
     const adminId = await createProfile(t, 'admin');
     const supervisorId = await createProfile(t, 'supervisor');
     const riderId = await createProfile(t, 'rider');
 
     const admin = t.withIdentity({ subject: adminId, email: 'admin@bringo.test' });
-    const riders = await admin.query(api.users.listRiderUsers, {});
+    const members = await admin.query(api.users.listTeamMembers, {});
 
-    expect(riders).toHaveLength(1);
-    expect(riders[0].userId).toBe(riderId);
-    expect(riders[0].displayName).toBe('Livreur Test');
-    expect(riders[0].email).toMatch(/@bringo\.test$/);
-    expect(riders[0].isActive).toBe(true);
+    expect(members).toHaveLength(2);
+    const rider = members.find((m) => m.role === 'rider');
+    const supervisor = members.find((m) => m.role === 'supervisor');
+    expect(rider).toBeDefined();
+    expect(rider!.userId).toBe(riderId);
+    expect(supervisor).toBeDefined();
+    expect(supervisor!.userId).toBe(supervisorId);
 
     await expect(
       t
         .withIdentity({ subject: supervisorId, email: 'supervisor@bringo.test' })
-        .query(api.users.listRiderUsers, {})
+        .query(api.users.listTeamMembers, {})
     ).rejects.toThrow(/Forbidden/);
   });
 
@@ -150,7 +153,7 @@ describe('listRiderUsers', () => {
     await expect(
       t
         .withIdentity({ subject: riderId, email: 'rider@bringo.test' })
-        .query(api.users.listRiderUsers, {})
+        .query(api.users.listTeamMembers, {})
     ).rejects.toThrow(/Forbidden/);
   });
 });
@@ -180,7 +183,7 @@ describe('rider activation', () => {
   });
 });
 
-describe('provisionRiderProfile', () => {
+describe('provisionProfile', () => {
   it('creates exactly one active rider profile and clears the marker', async () => {
     const t = makeT();
     const userId = await t.run(async (ctx) =>
@@ -192,10 +195,11 @@ describe('provisionRiderProfile', () => {
     );
 
     const profileId = await t.run((ctx) =>
-      provisionRiderProfile(ctx, {
+      provisionProfile(ctx, {
         userId,
         displayName: 'Livreur Provisionné',
         email: 'provisioned@bringo.test',
+        role: 'rider',
       })
     );
 
@@ -211,10 +215,11 @@ describe('provisionRiderProfile', () => {
     expect(user?.provisioningRole).toBeUndefined();
 
     const again = await t.run((ctx) =>
-      provisionRiderProfile(ctx, {
+      provisionProfile(ctx, {
         userId,
         displayName: 'Autre Nom',
         email: 'provisioned@bringo.test',
+        role: 'rider',
       })
     );
     expect(again).toBe(profileId);
@@ -230,10 +235,11 @@ describe('provisionRiderProfile', () => {
     );
 
     const profileId = await t.run((ctx) =>
-      provisionRiderProfile(ctx, {
+      provisionProfile(ctx, {
         userId,
         displayName: '   ',
         email: 'sans-nom@bringo.test',
+        role: 'rider',
       })
     );
 
