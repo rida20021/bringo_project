@@ -242,3 +242,101 @@ describe('role changes', () => {
     expect((await getProfile(t, riderId))?.role).toBe('rider');
   });
 });
+
+describe('Excel rider sync', () => {
+  async function createRider(t: T, canonicalName: string): Promise<Id<'riders'>> {
+    return t.run(async (ctx) =>
+      ctx.db.insert('riders', {
+        canonicalName,
+        aliases: [canonicalName],
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+  }
+
+  it('lists only riders without a linked profile', async () => {
+    const t = makeT();
+    const { admin } = await asAdmin(t);
+    const unlinkedId = await createRider(t, 'Livreur Sans Compte');
+    const linkedId = await createRider(t, 'Livreur Avec Compte');
+
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert('users', { email: 'linked@bringo.test' });
+      await ctx.db.insert('userProfiles', {
+        userId,
+        role: 'rider',
+        displayName: 'Livreur Avec Compte',
+        riderId: linkedId,
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const result = await admin.query(api.users.getUnlinkedRiders, {});
+    expect(result.map((rider) => rider._id)).toEqual([unlinkedId]);
+  });
+
+  it('creates a profile linked to the Excel rider and removes it from the list', async () => {
+    const t = makeT();
+    const { admin } = await asAdmin(t);
+    const riderId = await createRider(t, 'Livreur Excel');
+    const userId = await t.run(async (ctx) =>
+      ctx.db.insert('users', { email: 'excel@bringo.test' })
+    );
+
+    await admin.mutation(api.users.createUser, {
+      userId,
+      email: 'excel@bringo.test',
+      role: 'rider',
+      displayName: 'Livreur Excel',
+      riderId,
+    });
+
+    expect((await getProfile(t, userId))?.riderId).toBe(riderId);
+    expect(await admin.query(api.users.getUnlinkedRiders, {})).toHaveLength(0);
+  });
+
+  it('rejects linking the same Excel rider twice', async () => {
+    const t = makeT();
+    const { admin } = await asAdmin(t);
+    const riderId = await createRider(t, 'Livreur Excel');
+    const firstUserId = await t.run(async (ctx) =>
+      ctx.db.insert('users', { email: 'first@bringo.test' })
+    );
+    const secondUserId = await t.run(async (ctx) =>
+      ctx.db.insert('users', { email: 'second@bringo.test' })
+    );
+
+    await admin.mutation(api.users.createUser, {
+      userId: firstUserId,
+      email: 'first@bringo.test',
+      role: 'rider',
+      displayName: 'Premier Livreur',
+      riderId,
+    });
+
+    await expect(
+      admin.mutation(api.users.createUser, {
+        userId: secondUserId,
+        email: 'second@bringo.test',
+        role: 'rider',
+        displayName: 'Second Livreur',
+        riderId,
+      })
+    ).rejects.toThrow(/already linked/);
+  });
+
+  it('keeps the unlinked list admin-only', async () => {
+    const t = makeT();
+    const supervisorId = await createProfile(t, 'supervisor');
+
+    await expect(
+      t
+        .withIdentity({ subject: supervisorId, email: 'supervisor@bringo.test' })
+        .query(api.users.getUnlinkedRiders, {})
+    ).rejects.toThrow(/Forbidden/);
+  });
+});

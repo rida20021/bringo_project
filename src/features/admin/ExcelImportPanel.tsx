@@ -223,6 +223,10 @@ export default function ExcelImportPanel() {
                     <dt>Conflits</dt>
                     <dd className="amount">{result.conflict}</dd>
                   </div>
+                  <div className="metric-row">
+                    <dt>Marchés créés automatiquement</dt>
+                    <dd className="amount">{result.marketsCreated}</dd>
+                  </div>
                 </dl>
                 <dl className="metric-list">
                   <div className="metric-row">

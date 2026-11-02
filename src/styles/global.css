@@ -1388,6 +1388,58 @@ a {
   height: 36px;
 }
 
+.rider-link-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.rider-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+
+.rider-link-actions .button,
+.rider-link-actions .button-ghost {
+  height: 36px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(16 27 32 / 0.55);
+}
+
+.modal-card {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 20px 60px rgb(16 27 32 / 0.24);
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.modal-head h2 {
+  font-size: 18px;
+}
+
 /* ---------- Admin: receipt review queue ---------- */
 
 .review-list {
@@ -2059,8 +2111,13 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .rider-loss-form {
+  .rider-loss-form,
+  .rider-link-form {
     grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop {
+    padding: 12px;
   }
 
   .panel {

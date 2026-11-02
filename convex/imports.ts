@@ -1,4 +1,5 @@
 import { mutation, query, internalMutation, internalQuery } from './_generated/server';
+import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { requireAdmin, requireSupervisor } from './lib/auth';
@@ -14,6 +15,62 @@ const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'card' | 'online_payment' | 'u
 function normalizePaymentMethod(raw: string): 'cash' | 'card' | 'online_payment' | 'unknown' {
   const key = raw.trim().toLowerCase().replace(/\s+/g, '_');
   return PAYMENT_METHOD_MAP[key] || 'unknown';
+}
+
+function normalizeStoreName(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const name = String(value).trim();
+  return name.length > 0 ? name : null;
+}
+
+function normalizeStoreExternalId(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  // Excel numeric cells (e.g. 63) and strings ("63") must share one key.
+  const externalId = String(value).trim();
+  return externalId.length > 0 ? externalId : null;
+}
+
+/**
+ * Resolve the market for an imported row, creating it on first sight.
+ *
+ * `cache` is scoped to a single batch so a report with hundreds of rows only
+ * pays one index lookup per distinct store. A market is only provisioned when
+ * both the name and external ID are usable; `city` stays empty for the admin
+ * to fill in later.
+ */
+async function resolveMarketId(
+  ctx: MutationCtx,
+  cache: Map<string, Id<'markets'>>,
+  rawName: unknown,
+  rawExternalId: unknown,
+  now: number
+): Promise<{ marketId: Id<'markets'>; created: boolean } | null> {
+  const name = normalizeStoreName(rawName);
+  const externalId = normalizeStoreExternalId(rawExternalId);
+  if (!name || !externalId) return null;
+
+  const cached = cache.get(externalId);
+  if (cached) return { marketId: cached, created: false };
+
+  // `.first()` keeps the import resilient if legacy duplicate external IDs exist.
+  const existing = await ctx.db
+    .query('markets')
+    .withIndex('externalId', (q) => q.eq('externalId', externalId))
+    .first();
+  if (existing) {
+    cache.set(externalId, existing._id);
+    return { marketId: existing._id, created: false };
+  }
+
+  const marketId = await ctx.db.insert('markets', {
+    name,
+    externalId,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  cache.set(externalId, marketId);
+  return { marketId, created: true };
 }
 
 export const getImportBatchByHash = internalQuery({
@@ -117,7 +174,10 @@ export const processImportBatch = internalMutation({
     let rejected = 0;
     let duplicate = 0;
     let conflict = 0;
+    let marketsCreated = 0;
     const errors: string[] = [];
+    // One lookup per distinct store for the whole batch; discarded afterwards.
+    const marketCache = new Map<string, Id<'markets'>>();
 
     for (let i = 0; i < args.rows.length; i++) {
       const row = args.rows[i];
@@ -125,6 +185,7 @@ export const processImportBatch = internalMutation({
 
       const commandId = String(row.number || row.command_id || row.id || '').trim();
       const rawRiderName = String(row.shopper_name || row.rider || row.name || '').trim();
+      const rawStoreName = row.store_internal_name;
       const rawPaymentMethod = String(row.payment_method || row.method || '').trim();
       const rawAmount = row.Total || row.total || row.amount || row.montant;
       const rawDate = row.delivery_date_end || row.date || row.delivery_date;
@@ -205,6 +266,18 @@ export const processImportBatch = internalMutation({
         }
       }
 
+      // Auto-provision the market catalog from the report. This runs even for
+      // rows that fail validation: the store is real reference data.
+      const resolvedMarket = await resolveMarketId(
+        ctx,
+        marketCache,
+        rawStoreName,
+        row.store_external_id,
+        Date.now()
+      );
+      if (resolvedMarket?.created) marketsCreated++;
+      const marketId = resolvedMarket?.marketId;
+
       const sourceRowId = await ctx.db.insert('sourceRows', {
         importBatchId: args.batchId,
         originalRowNumber: rowNum,
@@ -231,8 +304,9 @@ export const processImportBatch = internalMutation({
           rawRiderName,
           paymentMethod,
           amount,
-          store: row.store_internal_name ? String(row.store_internal_name) : undefined,
+          store: normalizeStoreName(rawStoreName) ?? undefined,
           company: row.company ? String(row.company) : undefined,
+          marketId,
           shippingInfo: row,
           sourceRowId,
           importBatchId: args.batchId,
@@ -256,7 +330,7 @@ export const processImportBatch = internalMutation({
       errorSummary: errors.length > 0 ? errors.join('\n') : undefined,
     });
 
-    return { accepted, rejected, duplicate, conflict };
+    return { accepted, rejected, duplicate, conflict, marketsCreated };
   },
 });
 

@@ -19,6 +19,11 @@ export default defineSchema({
      * never persists or reaches clients.
      */
     provisioningRole: v.optional(v.union(v.literal('rider'), v.literal('supervisor'))),
+    /**
+     * Internal marker, consumed by the auth callback at the same time as
+     * `provisioningRole`, linking the new profile to an Excel-imported rider.
+     */
+    provisioningRiderId: v.optional(v.id('riders')),
   }).index('email', ['email'])
     .index('phone', ['phone']),
 
@@ -26,6 +31,12 @@ export default defineSchema({
     userId: v.id('users'),
     role: v.union(v.literal('supervisor'), v.literal('admin'), v.literal('rider')),
     displayName: v.string(),
+    /**
+     * Excel-imported rider represented by this account. Accounts created from
+     * the admin team page can be linked to a row in the `riders` table so the
+     * Excel data and auth profiles use the same identity.
+     */
+    riderId: v.optional(v.id('riders')),
     isActive: v.boolean(),
     /**
      * Soft-delete marker. Archived accounts are hidden from the admin
@@ -40,7 +51,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('userId', ['userId'])
-    .index('role', ['role']),
+    .index('role', ['role'])
+    .index('riderId', ['riderId']),
 
   markets: defineTable({
     name: v.string(),
@@ -185,6 +197,11 @@ export default defineSchema({
     amount: v.number(),
     store: v.optional(v.string()),
     company: v.optional(v.string()),
+    /**
+     * Market resolved from the report's `store_external_id`. Auto-provisioned
+     * during import so orders are linked to the market catalog.
+     */
+    marketId: v.optional(v.id('markets')),
     shippingInfo: v.optional(v.any()),
     sourceRowId: v.id('sourceRows'),
     importBatchId: v.id('importBatches'),
@@ -198,7 +215,8 @@ export default defineSchema({
     .index('deliveryDate', ['deliveryDate'])
     .index('riderId', ['riderId'])
     .index('paymentMethod', ['paymentMethod'])
-    .index('importBatchId', ['importBatchId']),
+    .index('importBatchId', ['importBatchId'])
+    .index('marketId', ['marketId']),
 
   cashCollections: defineTable({
     riderId: v.id('riders'),

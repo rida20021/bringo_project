@@ -16,6 +16,8 @@ export interface ProvisionArgs {
   displayName: string;
   email: string;
   role: 'rider' | 'supervisor';
+  /** Excel-imported rider to link this account to, when onboarding one. */
+  riderId?: Id<'riders'>;
 }
 
 /**
@@ -35,7 +37,16 @@ export async function provisionProfile(
     .withIndex('userId', (q) => q.eq('userId', args.userId))
     .unique();
   if (existing) {
-    await ctx.db.patch(args.userId, { provisioningRole: undefined });
+    if (args.riderId && !existing.riderId) {
+      await ctx.db.patch(existing._id, {
+        riderId: args.riderId,
+        updatedAt: Date.now(),
+      });
+    }
+    await ctx.db.patch(args.userId, {
+      provisioningRole: undefined,
+      provisioningRiderId: undefined,
+    });
     return existing._id;
   }
 
@@ -46,14 +57,18 @@ export async function provisionProfile(
     userId: args.userId,
     role: args.role,
     displayName,
+    ...(args.riderId ? { riderId: args.riderId } : {}),
     isActive: true,
     debtBalance: 0,
     createdAt: now,
     updatedAt: now,
   });
 
-  // The marker is internal only: remove it from the user document.
-  await ctx.db.patch(args.userId, { provisioningRole: undefined });
+  // The markers are internal only: remove them from the user document.
+  await ctx.db.patch(args.userId, {
+    provisioningRole: undefined,
+    provisioningRiderId: undefined,
+  });
 
   return profileId;
 }

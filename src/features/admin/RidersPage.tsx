@@ -22,6 +22,7 @@ type TeamRole = 'rider' | 'supervisor';
 export default function RidersPage() {
   const [showArchived, setShowArchived] = useState(false);
   const members = useQuery(api.users.listTeamMembers, { includeArchived: showArchived });
+  const unlinkedRiders = useQuery(api.users.getUnlinkedRiders, {});
   const createTeamMember = useAction(api.users.createTeamMember);
   const setUserActive = useMutation(api.users.setUserActive);
   const bulkSetUserActive = useMutation(api.users.bulkSetUserActive);
@@ -41,13 +42,23 @@ export default function RidersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<Id<'users'>>>(new Set());
   const [busy, setBusy] = useState(false);
 
+  const [unlinkedSearch, setUnlinkedSearch] = useState('');
+  const [unlinkedVisibleCount, setUnlinkedVisibleCount] = useState(PAGE_SIZE);
+
   const [lossUserId, setLossUserId] = useState<Id<'users'> | null>(null);
   const [lossAmount, setLossAmount] = useState('');
   const [lossReason, setLossReason] = useState('');
   const [lossDate, setLossDate] = useState(todayDateInputValue());
   const [lossPending, setLossPending] = useState(false);
 
-  if (members === undefined) return <LoadingSpinner />;
+  const [linkRiderId, setLinkRiderId] = useState<Id<'riders'> | null>(null);
+  const [linkRiderName, setLinkRiderName] = useState('');
+  const [linkDisplayName, setLinkDisplayName] = useState('');
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkPassword, setLinkPassword] = useState('');
+  const [linkPending, setLinkPending] = useState(false);
+
+  if (members === undefined || unlinkedRiders === undefined) return <LoadingSpinner />;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,6 +98,61 @@ export default function RidersPage() {
       toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
     } finally {
       setPending(false);
+    }
+  };
+
+  const openLinkForm = (rider: (typeof unlinkedRiders)[number]) => {
+    setLinkRiderId(rider._id);
+    setLinkRiderName(rider.canonicalName);
+    setLinkDisplayName(rider.canonicalName);
+    setLinkEmail('');
+    setLinkPassword('');
+  };
+
+  const closeLinkForm = () => {
+    setLinkRiderId(null);
+    setLinkRiderName('');
+    setLinkDisplayName('');
+    setLinkEmail('');
+    setLinkPassword('');
+  };
+
+  const handleLinkSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!linkRiderId) return;
+
+    const trimmedName = linkDisplayName.trim();
+    const trimmedEmail = linkEmail.trim();
+
+    if (!trimmedName) {
+      toast.error('Le nom est obligatoire.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error('Saisissez une adresse e-mail valide.');
+      return;
+    }
+    if (linkPassword.length < MIN_PASSWORD_LENGTH) {
+      toast.error(`Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`);
+      return;
+    }
+
+    setLinkPending(true);
+    try {
+      await createTeamMember({
+        displayName: trimmedName,
+        email: trimmedEmail,
+        password: linkPassword,
+        role: 'rider',
+        riderId: linkRiderId,
+      });
+      toast.success(`Compte de ${trimmedName} créé et lié au livreur Excel.`);
+      closeLinkForm();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
+    } finally {
+      setLinkPending(false);
     }
   };
 
@@ -266,6 +332,17 @@ export default function RidersPage() {
   };
 
   const activeCount = members.filter((m) => m.isActive && !m.isArchived).length;
+
+  const unlinkedQuery = unlinkedSearch.trim().toLocaleLowerCase('fr');
+  const filteredUnlinkedRiders = unlinkedRiders.filter((rider) => {
+    if (!unlinkedQuery) return true;
+    return (
+      rider.canonicalName.toLocaleLowerCase('fr').includes(unlinkedQuery) ||
+      rider.aliases.join(' ').toLocaleLowerCase('fr').includes(unlinkedQuery)
+    );
+  });
+  const displayedUnlinkedRiders = filteredUnlinkedRiders.slice(0, unlinkedVisibleCount);
+  const hasMoreUnlinked = filteredUnlinkedRiders.length > unlinkedVisibleCount;
 
   return (
     <div className="page">
@@ -656,6 +733,195 @@ export default function RidersPage() {
           </>
         )}
       </section>
+
+      <section className="panel">
+        <header className="panel-head">
+          <div>
+            <h2>Livreurs Excel non liés</h2>
+            <p className="panel-sub">
+              Livreurs importés depuis le fichier Excel qui n’ont pas encore de compte.
+              Créez un compte pour les lier à leur profil.
+            </p>
+          </div>
+          <span className="panel-count">
+            {unlinkedQuery
+              ? `${filteredUnlinkedRiders.length} / ${unlinkedRiders.length} livreur(s)`
+              : `${unlinkedRiders.length} livreur(s)`}
+          </span>
+        </header>
+
+        {unlinkedRiders.length === 0 ? (
+          <div className="empty">
+            <p className="empty-title">Tous les livreurs sont liés</p>
+            <p className="empty-text">Chaque livreur importé depuis Excel dispose d’un compte.</p>
+          </div>
+        ) : (
+          <>
+            <label className="field market-search">
+              <span className="field-label">Rechercher</span>
+              <input
+                type="search"
+                value={unlinkedSearch}
+                placeholder="Nom ou alias du livreur…"
+                onChange={(event) => {
+                  setUnlinkedSearch(event.target.value);
+                  setUnlinkedVisibleCount(PAGE_SIZE);
+                }}
+              />
+            </label>
+
+            {filteredUnlinkedRiders.length === 0 ? (
+              <div className="empty">
+                <p className="empty-title">Aucun résultat</p>
+                <p className="empty-text">Essayez un autre nom ou alias.</p>
+              </div>
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Livreur</th>
+                        <th scope="col">Alias</th>
+                        <th scope="col">État Excel</th>
+                        <th scope="col">Ajouté le</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedUnlinkedRiders.map((rider) => (
+                        <tr key={rider._id}>
+                          <td>{rider.canonicalName}</td>
+                          <td className="table-muted">
+                            {rider.aliases.length > 0 ? rider.aliases.join(', ') : '—'}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${rider.isActive ? 'badge-ok' : 'badge-neutral'}`}
+                            >
+                              <span className="badge-dot" aria-hidden="true" />
+                              {rider.isActive ? 'Actif' : 'Inactif'}
+                            </span>
+                          </td>
+                          <td className="table-muted">{formatShortDate(rider.createdAt)}</td>
+                          <td>
+                            <div className="table-actions">
+                              <button
+                                type="button"
+                                className="button-ghost"
+                                onClick={() => openLinkForm(rider)}
+                              >
+                                Créer un compte
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {hasMoreUnlinked ? (
+                  <div className="load-more">
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      onClick={() => setUnlinkedVisibleCount((count) => count + PAGE_SIZE)}
+                    >
+                      Charger plus ({filteredUnlinkedRiders.length - unlinkedVisibleCount} restant(s))
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </>
+        )}
+      </section>
+
+      {linkRiderId ? (
+        <div className="modal-backdrop" role="presentation" onClick={closeLinkForm}>
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="link-rider-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal-head">
+              <div>
+                <h2 id="link-rider-title">Créer un compte pour {linkRiderName}</h2>
+                <p className="panel-sub">
+                  Le nouveau profil sera lié au livreur importé depuis Excel.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={closeLinkForm}
+                disabled={linkPending}
+              >
+                Fermer
+              </button>
+            </header>
+
+            <form className="rider-link-form" onSubmit={handleLinkSubmit} noValidate>
+              <label className="field">
+                <span className="field-label">Nom complet</span>
+                <input
+                  type="text"
+                  name="linkDisplayName"
+                  value={linkDisplayName}
+                  onChange={(event) => setLinkDisplayName(event.target.value)}
+                  placeholder="Rida Alaoui"
+                  autoComplete="off"
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Adresse e-mail</span>
+                <input
+                  type="email"
+                  name="linkEmail"
+                  value={linkEmail}
+                  onChange={(event) => setLinkEmail(event.target.value)}
+                  placeholder="livreur@bringo.ma"
+                  autoComplete="off"
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Mot de passe</span>
+                <input
+                  type="password"
+                  name="linkPassword"
+                  value={linkPassword}
+                  onChange={(event) => setLinkPassword(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={MIN_PASSWORD_LENGTH}
+                />
+              </label>
+
+              <div className="rider-link-actions">
+                <button
+                  type="submit"
+                  className="button button-primary"
+                  disabled={linkPending}
+                >
+                  {linkPending ? 'Création…' : 'Créer et lier le compte'}
+                </button>
+                <button
+                  type="button"
+                  className="button-ghost"
+                  onClick={closeLinkForm}
+                  disabled={linkPending}
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

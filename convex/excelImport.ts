@@ -29,6 +29,7 @@ interface ImportSummary {
   rejected: number;
   duplicate: number;
   conflict: number;
+  marketsCreated: number;
 }
 
 interface MatchingSummary {
@@ -69,6 +70,7 @@ type ImportExcelResult =
       rejected: number;
       duplicate: number;
       conflict: number;
+      marketsCreated: number;
       matched: number;
       missingInExcel: number;
       amountMismatch: number;

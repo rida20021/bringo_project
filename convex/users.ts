@@ -89,8 +89,35 @@ export const listTeamMembers = query({
 });
 
 /**
+ * Excel-imported riders that do not yet have an auth account linked to them.
+ * The admin team page uses this to onboard existing riders without creating
+ * duplicate identities.
+ */
+export const getUnlinkedRiders = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const [riders, profiles] = await Promise.all([
+      ctx.db.query('riders').collect(),
+      ctx.db.query('userProfiles').collect(),
+    ]);
+
+    const linkedRiderIds = new Set<string>();
+    for (const profile of profiles) {
+      if (profile.riderId) linkedRiderIds.add(profile.riderId);
+    }
+
+    return riders
+      .filter((rider) => !linkedRiderIds.has(rider._id))
+      .sort((a, b) => a.canonicalName.localeCompare(b.canonicalName, 'fr'));
+  },
+});
+
+/**
  * Bootstrap a profile for an existing auth user.
  * Only admins can promote/demote; the first admin is seeded by `seedAdmin`.
+ * An optional `riderId` links the profile to an Excel-imported rider.
  */
 export const createUser = mutation({
   args: {
@@ -98,6 +125,7 @@ export const createUser = mutation({
     email: v.string(),
     role: v.union(v.literal('supervisor'), v.literal('admin'), v.literal('rider')),
     displayName: v.string(),
+    riderId: v.optional(v.id('riders')),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -111,10 +139,22 @@ export const createUser = mutation({
       .unique();
     if (existingProfile) throw new Error('A profile already exists for this user');
 
+    if (args.riderId) {
+      const rider = await ctx.db.get(args.riderId);
+      if (!rider) throw new Error('Excel rider not found');
+
+      const alreadyLinked = await ctx.db
+        .query('userProfiles')
+        .withIndex('riderId', (q) => q.eq('riderId', args.riderId!))
+        .first();
+      if (alreadyLinked) throw new Error('This Excel rider is already linked to an account');
+    }
+
     await ctx.db.insert('userProfiles', {
       userId: args.userId,
       role: args.role,
       displayName: args.displayName,
+      ...(args.riderId ? { riderId: args.riderId } : {}),
       isActive: true,
       debtBalance: 0,
       createdAt: Date.now(),
@@ -137,6 +177,7 @@ export const createTeamMember = action({
     email: v.string(),
     password: v.string(),
     role: v.union(v.literal('rider'), v.literal('supervisor')),
+    riderId: v.optional(v.id('riders')),
   },
   handler: async (ctx, args) => {
     await ctx.runQuery(internal.users.getCallerRole, {});
@@ -160,6 +201,10 @@ export const createTeamMember = action({
       );
     }
 
+    if (args.riderId) {
+      await ctx.runQuery(internal.users.getLinkableRider, { riderId: args.riderId });
+    }
+
     const existing = await ctx.runQuery(internal.users.findUserByEmail, { email });
     if (existing) throw new Error('An account with this email already exists');
 
@@ -170,6 +215,7 @@ export const createTeamMember = action({
         email,
         name: displayName,
         provisioningRole: args.role,
+        ...(args.riderId ? { provisioningRiderId: args.riderId } : {}),
       },
     });
 
@@ -375,6 +421,23 @@ export const getCallerRole = internalQuery({
   handler: async (ctx) => {
     const appUser = await requireAdmin(ctx);
     return { userId: appUser.userId, role: appUser.role };
+  },
+});
+
+/** Action-safe check that an Excel rider exists and is still linkable. */
+export const getLinkableRider = internalQuery({
+  args: { riderId: v.id('riders') },
+  handler: async (ctx, args) => {
+    const rider = await ctx.db.get(args.riderId);
+    if (!rider) throw new Error('Excel rider not found');
+
+    const alreadyLinked = await ctx.db
+      .query('userProfiles')
+      .withIndex('riderId', (q) => q.eq('riderId', args.riderId))
+      .first();
+    if (alreadyLinked) throw new Error('This Excel rider is already linked to an account');
+
+    return { riderId: rider._id, canonicalName: rider.canonicalName };
   },
 });
 

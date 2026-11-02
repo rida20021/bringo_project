@@ -37,9 +37,15 @@ function makeT() {
 }
 
 function workbookBytes(
-  rows: Array<[string, string, string, string, string, number]>
+  rows: Array<[string, string, string, string, string, number, (string | number | null)?]>
 ): Uint8Array {
-  const aoa = [HEADERS, ...rows.map((row) => [...row, 'STORE-1', 'Bringo', 'standard'])];
+  const aoa = [
+    HEADERS,
+    ...rows.map((row) => {
+      const [date, command, method, store, rider, total, externalId = 'STORE-1'] = row;
+      return [date, command, method, store, rider, total, externalId, 'Bringo', 'standard'];
+    }),
+  ];
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(aoa), 'Rapport');
   const buffer = XLSX.write(workbook, {
@@ -190,6 +196,118 @@ describe('importExcelFile action', () => {
     const missing = discrepancies.find((row) => row.reason === 'missing_in_excel');
     expect(missing).toMatchObject({ commandId: 'CMD-MISSING', riderAmount: 2000 });
     expect(missing?.excelAmount).toBeUndefined();
+  });
+
+  it('auto-provisions markets from store fields and links orders to them', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+
+    const bytes = workbookBytes([
+      ['2026-10-25', 'CMD-A', 'cash', 'Store A', 'Livreur Test', 10],
+      ['2026-10-25', 'CMD-B', 'cash', 'Store A', 'Livreur Test', 20],
+      ['2026-10-25', 'CMD-C', 'cash', 'Store B', 'Livreur Test', 30, 'STORE-2'],
+    ]);
+
+    const result = await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .action(api.excelImport.importExcelFile, {
+        storageId: await storeWorkbook(t, bytes),
+        fileName: IMPORT_FILE_NAME,
+      });
+
+    expect(result.duplicateFile).toBe(false);
+    if (result.duplicateFile) throw new Error('expected a fresh import');
+    expect(result.marketsCreated).toBe(2);
+
+    const markets = await t.run(async (ctx) => ctx.db.query('markets').collect());
+    expect(markets).toHaveLength(2);
+
+    const storeA = markets.find((market) => market.externalId === 'STORE-1');
+    expect(storeA).toMatchObject({ name: 'Store A', isActive: true });
+    expect(storeA?.city).toBeUndefined();
+
+    const orders = await t.run(async (ctx) => ctx.db.query('orders').collect());
+    expect(orders).toHaveLength(3);
+
+    const orderA = orders.find((order) => order.commandId === 'CMD-A');
+    const orderB = orders.find((order) => order.commandId === 'CMD-B');
+    const orderC = orders.find((order) => order.commandId === 'CMD-C');
+    const storeB = markets.find((market) => market.externalId === 'STORE-2');
+
+    expect(orderA?.marketId).toBe(storeA?._id);
+    expect(orderB?.marketId).toBe(storeA?._id);
+    expect(orderC?.marketId).toBe(storeB?._id);
+  });
+
+  it('reuses an existing market with the same external ID', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+
+    const existingMarketId = await t.run(async (ctx) =>
+      ctx.db.insert('markets', {
+        name: 'Existing Store',
+        externalId: 'STORE-1',
+        city: 'Casablanca',
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+
+    const bytes = workbookBytes([
+      ['2026-10-25', 'CMD-REUSE', 'cash', 'Renamed Store', 'Livreur Test', 10],
+    ]);
+
+    const result = await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .action(api.excelImport.importExcelFile, {
+        storageId: await storeWorkbook(t, bytes),
+        fileName: IMPORT_FILE_NAME,
+      });
+
+    expect(result.duplicateFile).toBe(false);
+    if (result.duplicateFile) throw new Error('expected a fresh import');
+    expect(result.marketsCreated).toBe(0);
+
+    const markets = await t.run(async (ctx) => ctx.db.query('markets').collect());
+    expect(markets).toHaveLength(1);
+    expect(markets[0]).toMatchObject({ _id: existingMarketId, name: 'Existing Store' });
+
+    const order = await t.run(async (ctx) =>
+      ctx.db
+        .query('orders')
+        .withIndex('commandId', (q) => q.eq('commandId', 'CMD-REUSE'))
+        .unique()
+    );
+    expect(order?.marketId).toBe(existingMarketId);
+  });
+
+  it('skips market provisioning when the store name or external ID is missing', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+
+    const bytes = workbookBytes([
+      ['2026-10-25', 'CMD-NO-ID', 'cash', 'Store A', 'Livreur Test', 10, null],
+      ['2026-10-25', 'CMD-NO-NAME', 'cash', '', 'Livreur Test', 20, 'STORE-9'],
+    ]);
+
+    const result = await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .action(api.excelImport.importExcelFile, {
+        storageId: await storeWorkbook(t, bytes),
+        fileName: IMPORT_FILE_NAME,
+      });
+
+    expect(result.duplicateFile).toBe(false);
+    if (result.duplicateFile) throw new Error('expected a fresh import');
+    expect(result.marketsCreated).toBe(0);
+
+    const markets = await t.run(async (ctx) => ctx.db.query('markets').collect());
+    expect(markets).toHaveLength(0);
+
+    const orders = await t.run(async (ctx) => ctx.db.query('orders').collect());
+    expect(orders).toHaveLength(2);
+    expect(orders.every((order) => order.marketId === undefined)).toBe(true);
   });
 
   it('detects a duplicate import of the same bytes and does not duplicate orders', async () => {

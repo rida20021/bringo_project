@@ -51,7 +51,11 @@
 - [x] **Task 6.2.3:** Add a "City" dropdown to the creation form and the table.
 - [x] **Task 6.2.4:** Add an "Import Excel/CSV" button to bulk-create 50+ markets.
 - [x] **Task 6.2.5:** Add Pagination ("Charger plus").
-- [ ] **Task 6.2.6: Excel Rider Sync.** Add a button on the Équipe page to view Riders imported from the Excel file who do not yet have Auth accounts. Allow the Admin to create accounts for them to link the `riders` table to `userProfiles`.
+- [x] **Task 6.2.6: Excel Rider Sync.** Add a button on the Équipe page to view Riders imported from the Excel file who do not yet have Auth accounts. Allow the Admin to create accounts for them to link the `riders` table to `userProfiles`.
+- [x] **Task 6.2.7: Auto-provision Markets.** During Excel import, create missing `markets` from `store_internal_name` / `store_external_id`, dedupe with an in-memory Map, leave `city` empty, and link orders via `orders.marketId`.
+- [x] **Task 6.2.8: Scale the Unlinked Riders table.** Add a local search box (name/alias) and "Charger plus" pagination (20 per page) to the Équipe page.
+- [ ] **Task 6.2.7: Auto-provision Markets on Excel Import.** Update the Excel parser to automatically create new markets in the database if they don't exist, using the `store_external_id` and `store_internal_name` from the uploaded file.
+- [ ] **Task 6.2.8: Scale Thinking for Unlinked Riders.** Add a local search box and pagination (20 per page) to the "Livreurs Excel non liés" table so the Admin can easily find riders when the list grows to 60+ items.
 
 ### 6.3 Import Control (Imports Récents)
 - [x] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").

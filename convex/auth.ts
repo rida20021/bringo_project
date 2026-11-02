@@ -1,5 +1,6 @@
 import { convexAuth } from '@convex-dev/auth/server';
 import { Password } from '@convex-dev/auth/providers/Password';
+import type { Id } from './_generated/dataModel';
 import type { MutationCtx } from './_generated/server';
 import { hasAdminProfile, provisionProfile } from './lib/provisioning';
 
@@ -49,11 +50,16 @@ export const { auth, signIn, signOut, store } = convexAuth({
       if (args.profile.provisioningRole === 'rider' || args.profile.provisioningRole === 'supervisor') {
         const name = typeof args.profile.name === 'string' ? args.profile.name : '';
         const email = typeof args.profile.email === 'string' ? args.profile.email : '';
+        const riderId =
+          typeof args.profile.provisioningRiderId === 'string'
+            ? (args.profile.provisioningRiderId as Id<'riders'>)
+            : undefined;
         await provisionProfile(dbCtx, {
           userId: args.userId,
           displayName: name || email,
           email,
           role: args.profile.provisioningRole,
+          riderId,
         });
         return;
       }
