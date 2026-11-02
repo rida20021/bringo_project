@@ -77,9 +77,17 @@
 - [x] **Task 6.5.8: Fix KPI Range Bug.** Fix the timestamp equality bug in `reconciliation.ts` so approved deposits show up correctly in the dashboard.
 
 ## Milestone 6.6: Live Operations & Dashboard Intelligence
+## Milestone 6.6: Live Operations & Cash Chain of Custody
 - [ ] **Task 6.6.1: Live Mode Dashboard.** Update `reconciliation.ts` so that if no Excel file (`orders`) exists for the selected date, the Dashboard KPIs fall back to calculating totals from `liveEntries` (Live Forecasts). Add a UI badge to distinguish "Live Mode" from "Audit Mode".
 - [ ] **Task 6.6.2: Rider 360 Live Feed.** Ensure the Rider 360 View includes a live feed of the Rider's `liveEntries` and `liveEntryReceipts` for today, so the Admin can track their progress in real-time.
-- [ ] **Task 6.6.3: Midnight Grace Period (Live Mode Sync).** Ensure that the Midnight Grace Period logic applies to the Live Mode Dashboard so late-night entries show up on the correct day's Live Feed.
+- [ ] **Task 6.6.3: Rider "Owe" Banner.** Add a dynamic banner on the Rider's home page. 
+  - 🔴 Red: Rider owes cash to the company (amount displayed).
+  - 🟡 Yellow: Cash handed to Supervisor, waiting for Admin bank approval.
+  - 🟢 Green (Hidden): Cleared.
+- [ ] **Task 6.6.4: Supervisor "Vault" & Collection.** Update the Supervisor collection form. When a Supervisor collects cash from a Rider, the Rider's debt is cleared (turns Yellow), but the debt transfers to the Supervisor's "Vault". Supervisors should see a rich log (Rider name, Time, Amount, Remaining Rider Balance).
+- [ ] **Task 6.6.5: Supervisor Bulk Bank Deposit.** Allow Supervisors to make one large bank deposit (e.g., 15,000 MAD) and check off multiple Riders it covers. Upload one bank receipt for the whole batch.
+- [ ] **Task 6.6.6: Admin Bulk Approval.** When the Admin reviews a Supervisor's bulk deposit, show the Chain of Custody (Supervisor -> Riders -> Collections). Clicking "Approve" clears the Supervisor's Vault AND clears all the Riders' Yellow banners simultaneously.
+- [ ] **Task 6.6.7: Midnight Grace Period Sync.** Ensure that the Midnight Grace Period logic applies to the Live Mode Dashboard so late-night entries show up on the correct day's Live Feed.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.
