@@ -3,6 +3,7 @@ import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { requireAdmin, requireSupervisor } from './lib/auth';
 import { parseAmountToCentimes, parseTikTakDate } from './lib/tiktakValues';
+import { insertAuditEvent } from './audit';
 
 const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'card' | 'online_payment' | 'unknown'> = {
   cash: 'cash',
@@ -292,5 +293,150 @@ export const getSourceRows = query({
       .withIndex('importBatchId', (q) => q.eq('importBatchId', args.batchId))
       .collect();
     return args.state ? rows.filter((row) => row.validationState === args.state) : rows;
+  },
+});
+
+/** Signed URL for the original uploaded report, or null when it was not stored. */
+export const getImportFileUrl = query({
+  args: { batchId: v.id('importBatches') },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch || !batch.storageId) return null;
+    return ctx.storage.getUrl(batch.storageId);
+  },
+});
+
+function sourceCommandId(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const record = data as Record<string, unknown>;
+  const raw = record.number ?? record.command_id ?? record.id;
+  if (raw === undefined || raw === null) return null;
+  const value = String(raw).trim();
+  return value.length > 0 ? value : null;
+}
+
+/** Invalid and conflicting rows for one batch, ordered by original row number. */
+export const getImportBatchIssues = query({
+  args: { batchId: v.id('importBatches') },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db
+      .query('sourceRows')
+      .withIndex('importBatchId', (q) => q.eq('importBatchId', args.batchId))
+      .collect();
+
+    return rows
+      .filter((row) => row.validationState === 'invalid' || row.validationState === 'conflict')
+      .sort((a, b) => a.originalRowNumber - b.originalRowNumber)
+      .map((row) => ({
+        _id: row._id,
+        rowNumber: row.originalRowNumber,
+        validationState: row.validationState,
+        commandId: sourceCommandId(row.originalData),
+        errors: row.errors ?? [],
+        warnings: row.warnings ?? [],
+      }));
+  },
+});
+
+/**
+ * Delete an import batch and everything derived from it: source rows, orders,
+ * their collection/TPE allocations, and linked discrepancies. Orders that only
+ * collide with this batch (duplicates from an earlier import) are preserved.
+ */
+export const deleteImportBatch = mutation({
+  args: { batchId: v.id('importBatches') },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) throw new Error('Import batch not found');
+
+    const sourceRows = await ctx.db
+      .query('sourceRows')
+      .withIndex('importBatchId', (q) => q.eq('importBatchId', args.batchId))
+      .collect();
+    const orders = await ctx.db
+      .query('orders')
+      .withIndex('importBatchId', (q) => q.eq('importBatchId', args.batchId))
+      .collect();
+    const orderIds = new Set(orders.map((order) => order._id));
+
+    let allocationsDeleted = 0;
+    for (const order of orders) {
+      const cashAllocations = await ctx.db
+        .query('cashCollectionAllocations')
+        .withIndex('orderId', (q) => q.eq('orderId', order._id))
+        .collect();
+      for (const allocation of cashAllocations) {
+        await ctx.db.delete(allocation._id);
+        allocationsDeleted += 1;
+      }
+
+      const tpeAllocations = await ctx.db
+        .query('tpeReceiptAllocations')
+        .withIndex('orderId', (q) => q.eq('orderId', order._id))
+        .collect();
+      for (const allocation of tpeAllocations) {
+        await ctx.db.delete(allocation._id);
+        allocationsDeleted += 1;
+      }
+    }
+
+    const discrepancies = await ctx.db.query('discrepancies').collect();
+    const linkedDiscrepancies = discrepancies.filter(
+      (discrepancy) =>
+        discrepancy.importBatchId === args.batchId ||
+        (discrepancy.orderId !== undefined && orderIds.has(discrepancy.orderId))
+    );
+    for (const discrepancy of linkedDiscrepancies) {
+      await ctx.db.delete(discrepancy._id);
+    }
+
+    for (const order of orders) {
+      await ctx.db.delete(order._id);
+    }
+    for (const row of sourceRows) {
+      await ctx.db.delete(row._id);
+    }
+
+    const storageId = batch.storageId;
+    if (storageId) {
+      await ctx.storage.delete(storageId);
+    }
+
+    await ctx.db.delete(args.batchId);
+
+    await insertAuditEvent(ctx, {
+      actorId: admin.userId,
+      action: 'import_batch.delete',
+      targetType: 'importBatch',
+      targetId: args.batchId,
+      beforeSummary: {
+        attachmentName: batch.attachmentName,
+        reportDate: batch.reportDate,
+        status: batch.status,
+        totalRows: batch.totalRows,
+        acceptedRows: batch.acceptedRows,
+        rejectedRows: batch.rejectedRows,
+        duplicateRows: batch.duplicateRows,
+        conflictRows: batch.conflictRows,
+      },
+      afterSummary: {
+        deletedOrders: orders.length,
+        deletedSourceRows: sourceRows.length,
+        deletedDiscrepancies: linkedDiscrepancies.length,
+        deletedAllocations: allocationsDeleted,
+        deletedStorageFile: storageId !== undefined,
+      },
+    });
+
+    return {
+      deletedOrders: orders.length,
+      deletedSourceRows: sourceRows.length,
+      deletedDiscrepancies: linkedDiscrepancies.length,
+      deletedAllocations: allocationsDeleted,
+    };
   },
 });

@@ -1,10 +1,10 @@
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import StatusBadge from '@/components/StatusBadge';
-import { formatDateTime, formatMAD, formatShortDate } from '@/lib/format';
+import { formatMAD, formatShortDate } from '@/lib/format';
 import DiscrepanciesPanel from './DiscrepanciesPanel';
 import ExcelImportPanel from './ExcelImportPanel';
+import ImportsPanel from './ImportsPanel';
 import PendingReceipts from './PendingReceipts';
 
 export default function AdminDashboard() {
@@ -13,7 +13,6 @@ export default function AdminDashboard() {
   if (data === undefined) return <LoadingSpinner />;
 
   const { imports, totals, collections, deposits, tpeReceipts, recentBatches, dateRange } = data;
-  const hasBatches = recentBatches.length > 0;
 
   return (
     <div className="page">
@@ -68,56 +67,7 @@ export default function AdminDashboard() {
 
       <PendingReceipts />
 
-      <section className="panel">
-        <header className="panel-head">
-          <div>
-            <h2>Imports récents</h2>
-            <p className="panel-sub">Rapports reçus et état de traitement</p>
-          </div>
-          <span className="panel-count">{imports.conflictRows} conflit(s)</span>
-        </header>
-
-        {hasBatches ? (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col">Fichier</th>
-                  <th scope="col">Rapport</th>
-                  <th scope="col" className="numeric">
-                    Lignes
-                  </th>
-                  <th scope="col">État</th>
-                  <th scope="col">Reçu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentBatches.map((batch) => (
-                  <tr key={batch._id}>
-                    <td className="table-file">{batch.attachmentName}</td>
-                    <td>{formatShortDate(batch.reportDate)}</td>
-                    <td className="numeric amount">
-                      {batch.acceptedRows}/{batch.totalRows}
-                    </td>
-                    <td>
-                      <StatusBadge status={batch.status} />
-                    </td>
-                    <td className="table-muted">{formatDateTime(batch.receivedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="empty">
-            <p className="empty-title">Aucun rapport sur la période</p>
-            <p className="empty-text">
-              Les rapports TIKTAK reçus par e-mail apparaîtront ici avec leur état de
-              traitement.
-            </p>
-          </div>
-        )}
-      </section>
+      <ImportsPanel batches={recentBatches} conflictRows={imports.conflictRows} />
 
       <div className="split">
         <section className="panel">

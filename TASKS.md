@@ -53,14 +53,9 @@
 - [x] **Task 6.2.5:** Add Pagination ("Charger plus").
 
 ### 6.3 Import Control (Imports Récents)
-- [ ] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").
-- [ ] **Task 6.3.2:** Add a "Delete Import" button that cascades to delete all related orders and discrepancies.
-- [ ] **Task 6.3.3:** Add a "Download Original File" link for auditing.
-
-### 6.4 Dashboards & Reporting
-- [ ] **Task 6.4.1:** Add a Date Picker to the Dashboard (view historical days).
-- [ ] **Task 6.4.2:** Add a "Export CSV" button for daily totals and discrepancies.
-- [ ] **Task 6.4.3:** Add a "Suivi des Livreurs" (Rider Tracking) section to the Supervisor dashboard to see live entries.
+- [x] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").
+- [x] **Task 6.3.2:** Add a "Delete Import" button that cascades to delete all related orders and discrepancies.
+- [x] **Task 6.3.3:** Add a "Download Original File" link for auditing.
 
 ### 6.5 Advanced Rider & Financial Edge Cases
 - [ ] **Task 6.5.1:** Build the Admin "Rider 360 View" (dedicated page showing rider stats and password reset).

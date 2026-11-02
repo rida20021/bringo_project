@@ -1121,6 +1121,83 @@ a {
   padding-left: 20px;
 }
 
+/* ---------- Admin: import control ---------- */
+
+.import-file-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.import-file-toggle:hover .import-file-name {
+  text-decoration: underline;
+}
+
+.import-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-row.is-expanded td {
+  background: var(--primary-soft);
+}
+
+.import-details-row td {
+  padding: 14px 18px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.import-issue-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-issue {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.import-issue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.import-issue-row {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.import-issue-command {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.import-issue-messages {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
 .form-success {
   padding: 10px 12px;
   border: 1px solid #bfe0d4;
