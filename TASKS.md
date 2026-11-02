@@ -62,11 +62,13 @@
 
 ### 6.5 Advanced Rider & Financial Edge Cases
 - [ ] **Task 6.5.1:** Build the Admin "Rider 360 View" (dedicated page showing rider stats and password reset).
-- [ ] **Task 6.5.2:** Implement "Write-Offs" (lost cash) with mandatory reason.
-- [ ] **Task 6.5.3:** Implement "Short Deposit" approval flow.
+- [ ] **Task 6.5.2:** Implement Rider Debt Tracking. Admin can record lost cash as a debt against the Rider.
+- [ ] **Task 6.5.3:** Implement Supervisor Debt Tracking. Approving a short deposit creates a debt against the Supervisor.
 - [ ] **Task 6.5.4:** Implement the Midnight Grace Period (00:00 - 03:00 AM counts for previous day).  
 - [x] **Task 6.5.5: Searchable Rider Dropdown.** Replace the native `<select>` in the Supervisor's Bank Deposit form with a searchable dropdown so Supervisors can type a Rider's name instead of scrolling through a massive list.
-- [ ] **Task 6.5.6: Supervisor Cash Collection.** Add a form to `SupervisorPage.tsx` so Supervisors can record physical cash collected from a Rider. Update `reconciliation.ts` so this counts towards the "Encaissé" KPI.
+- [x] **Task 6.5.6: Supervisor Cash Collection.** Add a form to `SupervisorPage.tsx` so Supervisors can record physical cash collected from a Rider. Update `reconciliation.ts` so this counts towards the "Encaissé" KPI.
+- [x] **Task 6.5.7: Admin Deposit Approval UI.** Build the Admin panel to review, approve, and reject Supervisor bank deposits.
+- [x] **Task 6.5.8: Fix KPI Range Bug.** Fix the timestamp equality bug in `reconciliation.ts` so approved deposits show up correctly in the dashboard.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

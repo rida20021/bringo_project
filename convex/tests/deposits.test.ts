@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import schema from '../schema';
 import { api } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
+import { startOfDayCasablanca } from '../lib/dates';
 
 const modules = import.meta.glob([
   '../**/*.ts',
@@ -82,6 +83,92 @@ async function seedPendingDeposit(t: T): Promise<Fixture> {
 function client(t: T, userId: Id<'users'>, email: string) {
   return t.withIdentity({ subject: userId, email });
 }
+
+describe('createCashCollection', () => {
+  it('records a confirmed collection on the start of the Casablanca report day', async () => {
+    const t = makeT();
+    const fixture = await seedPendingDeposit(t);
+    const supervisor = client(t, fixture.supervisorId, 'supervisor@bringo.test');
+
+    const collectionId = await supervisor.mutation(api.deposits.createCashCollection, {
+      riderId: fixture.riderId,
+      amount: 12550,
+      // 18:45 UTC is still the same Casablanca calendar day.
+      sourceReportDate: Date.UTC(2026, 10, 2, 18, 45),
+    });
+
+    const collection = await t.run(async (ctx) => ctx.db.get(collectionId));
+    expect(collection).toMatchObject({
+      riderId: fixture.riderId,
+      amount: 12550,
+      collectedBy: fixture.supervisorId,
+      status: 'confirmed',
+      isReversal: false,
+      sourceReportDate: startOfDayCasablanca(Date.UTC(2026, 10, 2, 18, 45)),
+    });
+  });
+
+  it('feeds the supervisor "Encaissé" KPI for that report day', async () => {
+    const t = makeT();
+    const fixture = await seedPendingDeposit(t);
+    const supervisor = client(t, fixture.supervisorId, 'supervisor@bringo.test');
+    const admin = client(t, fixture.adminId, 'admin@bringo.test');
+    const reportInstant = Date.UTC(2026, 10, 2, 18, 45);
+
+    await supervisor.mutation(api.deposits.createCashCollection, {
+      riderId: fixture.riderId,
+      amount: 289428,
+      sourceReportDate: reportInstant,
+    });
+
+    const data = await admin.query(api.reconciliation.getSupervisorDashboardData, {
+      reportDate: reportInstant,
+    });
+    expect(data.kpis.totalCollected).toBe(289428);
+    expect(data.reportDate).toBe(startOfDayCasablanca(reportInstant));
+  });
+
+  it('lets admins record collections but rejects riders and invalid amounts', async () => {
+    const t = makeT();
+    const fixture = await seedPendingDeposit(t);
+    const supervisor = client(t, fixture.supervisorId, 'supervisor@bringo.test');
+    const admin = client(t, fixture.adminId, 'admin@bringo.test');
+    const rider = client(t, fixture.riderUserId, 'rider@bringo.test');
+    const sourceReportDate = Date.UTC(2026, 10, 2, 12);
+
+    await expect(
+      admin.mutation(api.deposits.createCashCollection, {
+        riderId: fixture.riderId,
+        amount: 5000,
+        sourceReportDate,
+      })
+    ).resolves.toBeDefined();
+
+    await expect(
+      rider.mutation(api.deposits.createCashCollection, {
+        riderId: fixture.riderId,
+        amount: 5000,
+        sourceReportDate,
+      })
+    ).rejects.toThrow(/Forbidden/);
+
+    await expect(
+      supervisor.mutation(api.deposits.createCashCollection, {
+        riderId: fixture.riderId,
+        amount: 0,
+        sourceReportDate,
+      })
+    ).rejects.toThrow(/positive integer/);
+
+    await expect(
+      supervisor.mutation(api.deposits.createCashCollection, {
+        riderId: fixture.riderId,
+        amount: 12.5,
+        sourceReportDate,
+      })
+    ).rejects.toThrow(/positive integer/);
+  });
+});
 
 describe('listPendingBankDeposits', () => {
   it('enriches pending deposits with supervisor, rider and receipt data', async () => {

@@ -80,11 +80,11 @@ export const getSupervisorDashboardData = query({
       .filter((q) => q.and(q.eq(q.field('paymentMethod'), 'card'), q.eq(q.field('eligibilityStatus'), 'eligible')))
       .collect();
 
+    // Collections belong to the business day they settle (`sourceReportDate`),
+    // not the instant they were entered. Reversals never count as collected.
     const collections = await ctx.db.query('cashCollections')
-      .filter((q) => q.and(
-        q.eq(q.field('isReversal'), false),
-        q.eq(q.field('sourceReportDate'), targetDate)
-      ))
+      .withIndex('sourceReportDate', (q) => q.eq('sourceReportDate', targetDate))
+      .filter((q) => q.eq(q.field('isReversal'), false))
       .collect();
 
     // `depositDate` records the instant the deposit was registered, not the

@@ -204,10 +204,13 @@ export default defineSchema({
     sourceReportDate: v.number(),
     reversalOf: v.optional(v.id('cashCollections')),
     isReversal: v.boolean(),
+    // Optional so legacy rows (recorded before cash collection statuses) stay valid.
+    status: v.optional(v.literal('confirmed')),
     createdAt: v.number(),
   }).index('riderId', ['riderId'])
     .index('collectedAt', ['collectedAt'])
-    .index('collectedBy', ['collectedBy']),
+    .index('collectedBy', ['collectedBy'])
+    .index('sourceReportDate', ['sourceReportDate']),
 
   cashCollectionAllocations: defineTable({
     collectionId: v.id('cashCollections'),

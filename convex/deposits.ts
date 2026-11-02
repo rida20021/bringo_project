@@ -4,6 +4,64 @@ import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel } from './_generated/dataModel';
 import { requireAdmin, requireAppUser, requireSupervisor } from './lib/auth';
 import { insertAuditEvent } from './audit';
+import { startOfDayCasablanca } from './lib/dates';
+
+/**
+ * Supervisor or Admin records cash physically collected from a rider.
+ * `sourceReportDate` is normalized to the start of its Casablanca day so the
+ * "Encaissé" KPI can match it against the selected report date.
+ */
+export const createCashCollection = mutation({
+  args: {
+    riderId: v.id('riders'),
+    amount: v.number(),
+    sourceReportDate: v.number(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireSupervisor(ctx);
+
+    if (!Number.isSafeInteger(args.amount) || args.amount <= 0) {
+      throw new Error('Amount must be a positive integer number of centimes');
+    }
+    if (!Number.isFinite(args.sourceReportDate)) {
+      throw new Error('Invalid report date');
+    }
+
+    const rider = await ctx.db.get(args.riderId);
+    if (!rider) throw new Error('Rider not found');
+
+    const sourceReportDate = startOfDayCasablanca(args.sourceReportDate);
+    const now = Date.now();
+
+    const collectionId = await ctx.db.insert('cashCollections', {
+      riderId: args.riderId,
+      amount: args.amount,
+      collectedAt: now,
+      collectedBy: appUser.userId,
+      note: args.note?.trim() || undefined,
+      sourceReportDate,
+      isReversal: false,
+      status: 'confirmed',
+      createdAt: now,
+    });
+
+    await insertAuditEvent(ctx, {
+      actorId: appUser.userId,
+      action: 'collection.created',
+      targetType: 'cashCollections',
+      targetId: collectionId,
+      afterSummary: {
+        amount: args.amount,
+        riderId: args.riderId,
+        sourceReportDate,
+        status: 'confirmed',
+      },
+    });
+
+    return collectionId;
+  },
+});
 
 /**
  * Supervisor or Admin records a bank deposit tied to a rider.
