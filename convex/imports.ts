@@ -221,26 +221,60 @@ export const processImportBatch = internalMutation({
 
       let linkedOrderId: Id<'orders'> | undefined;
       if (validationState === 'valid') {
-        // Command IDs are unique across the whole orders table, not per day.
-        const existingOrder = await ctx.db
+        // A command can legitimately produce several orders: a split payment
+        // stores one leg per payment method (e.g. 100 MAD cash + 50 MAD card).
+        // Collect every leg for the command instead of asserting uniqueness.
+        const existingOrders = await ctx.db
           .query('orders')
           .withIndex('commandId', (q) => q.eq('commandId', commandId))
-          .unique();
-        if (existingOrder) {
-          const sameAmount = existingOrder.amount === amount;
-          const sameRider = existingOrder.rawRiderName === rawRiderName;
-          const sameMethod = existingOrder.paymentMethod === paymentMethod;
-          if (sameAmount && sameRider && sameMethod) {
-            validationState = 'duplicate';
-            duplicate++;
-            linkedOrderId = existingOrder._id;
-          } else {
-            validationState = 'conflict';
-            conflict++;
-            rowErrors.push(
-              `Conflicts with existing order ${commandId}: amount=${existingOrder.amount / 100}, rider=${existingOrder.rawRiderName}, method=${existingOrder.paymentMethod}`
+          .collect();
+
+        const sameMethodOrder = existingOrders.find(
+          (order) => order.paymentMethod === paymentMethod
+        );
+
+        if (!sameMethodOrder) {
+          // No leg for this payment method yet: this row is a split-payment
+          // leg and is inserted as a new order. A different rider is a data
+          // smell worth surfacing, but never blocks the import.
+          for (const existingOrder of existingOrders) {
+            const splitWarning = `Cmd #${commandId} : paiement partagé (${existingOrder.paymentMethod} / ${paymentMethod})`;
+            if (!warnings.includes(splitWarning)) warnings.push(splitWarning);
+
+            // The first leg was inserted before the importer could know this
+            // command was split. Tag its source row now so both Excel rows are
+            // visible as split payments in the import details.
+            const existingSourceRow = await ctx.db.get(existingOrder.sourceRowId);
+            if (existingSourceRow) {
+              const existingWarnings = existingSourceRow.warnings ?? [];
+              if (!existingWarnings.includes(splitWarning)) {
+                await ctx.db.patch(existingSourceRow._id, {
+                  warnings: [...existingWarnings, splitWarning],
+                });
+              }
+            }
+          }
+          const otherRiderLeg = existingOrders.find(
+            (order) => order.rawRiderName !== rawRiderName
+          );
+          if (otherRiderLeg) {
+            warnings.push(
+              `Split payment rider differs from order ${commandId}: rider=${otherRiderLeg.rawRiderName}`
             );
           }
+        } else if (
+          sameMethodOrder.amount === amount &&
+          sameMethodOrder.rawRiderName === rawRiderName
+        ) {
+          validationState = 'duplicate';
+          duplicate++;
+          linkedOrderId = sameMethodOrder._id;
+        } else {
+          validationState = 'conflict';
+          conflict++;
+          rowErrors.push(
+            `Conflicts with existing order ${commandId}: amount=${sameMethodOrder.amount / 100}, rider=${sameMethodOrder.rawRiderName}, method=${sameMethodOrder.paymentMethod}`
+          );
         }
       }
 
@@ -390,7 +424,7 @@ function sourceCommandId(data: unknown): string | null {
   return value.length > 0 ? value : null;
 }
 
-/** Invalid and conflicting rows for one batch, ordered by original row number. */
+/** Invalid, conflicting, and warning-bearing rows ordered by original row number. */
 export const getImportBatchIssues = query({
   args: { batchId: v.id('importBatches') },
   handler: async (ctx, args) => {
@@ -401,8 +435,6 @@ export const getImportBatchIssues = query({
       .collect();
 
     return rows
-      .filter((row) => row.validationState === 'invalid' || row.validationState === 'conflict')
-      .sort((a, b) => a.originalRowNumber - b.originalRowNumber)
       .map((row) => ({
         _id: row._id,
         rowNumber: row.originalRowNumber,
@@ -410,7 +442,9 @@ export const getImportBatchIssues = query({
         commandId: sourceCommandId(row.originalData),
         errors: row.errors ?? [],
         warnings: row.warnings ?? [],
-      }));
+      }))
+      .filter((row) => row.errors.length > 0 || row.warnings.length > 0)
+      .sort((a, b) => a.rowNumber - b.rowNumber);
   },
 });
 

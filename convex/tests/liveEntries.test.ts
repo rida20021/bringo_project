@@ -1,10 +1,12 @@
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
 import { convexTest } from 'convex-test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { fromZonedTime } from 'date-fns-tz';
 import schema from '../schema';
 import { api } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
+import { CASABLANCA_TZ, liveEntryDateCasablanca } from '../lib/dates';
 
 const modules = import.meta.glob([
   '../**/*.ts',
@@ -82,6 +84,31 @@ const validReceiptFor = (storageId: Id<'_storage'>) => ({
 });
 
 describe('createLiveOrder', () => {
+  it('assigns a late-night submission to the previous business day and keeps it visible', async () => {
+    const now = fromZonedTime('2026-11-02T02:30:00', CASABLANCA_TZ).getTime();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    try {
+      const t = makeT();
+      const { client } = await asRider(t);
+      const marketId = await createMarket(t);
+
+      await client.mutation(api.orders.createLiveOrder, {
+        commandId: 'CMD-LATE',
+        marketId,
+        amount: 4200,
+        paymentMethod: 'cash',
+      });
+
+      const entries = await client.query(api.orders.getMyLiveEntries, {});
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entryDate).toBe(liveEntryDateCasablanca(now));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('creates a cash entry without a receipt and lists it for the rider', async () => {
     const t = makeT();
     const { client } = await asRider(t);

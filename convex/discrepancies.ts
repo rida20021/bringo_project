@@ -18,6 +18,28 @@ interface MatchingArgs {
   importBatchId?: Id<'importBatches'>;
 }
 
+/** All Excel orders for one command, collapsed into a single expected total. */
+interface ExcelCommandLegs {
+  /** Sum of every split-payment leg, in integer centimes. */
+  amount: number;
+  orders: Doc<'orders'>[];
+}
+
+/**
+ * Pick the order leg that corresponds to the rider's payment method so a
+ * discrepancy links to the most relevant order (`tpe` entries store their
+ * card equivalent as `card` in the Excel orders).
+ */
+function representativeOrder(
+  group: ExcelCommandLegs,
+  paymentMethod: 'cash' | 'tpe' | 'card'
+): Doc<'orders'> {
+  const expectedMethod = paymentMethod === 'tpe' ? 'card' : paymentMethod;
+  return (
+    group.orders.find((order) => order.paymentMethod === expectedMethod) ?? group.orders[0]
+  );
+}
+
 /**
  * Compare the rider live entries of a Casablanca business day against the
  * imported Excel truth. Discrepancies are upserted so re-running a match (or
@@ -36,9 +58,19 @@ async function matchLiveEntries(ctx: MutationCtx, args: MatchingArgs) {
     .withIndex('deliveryDate', (q) => q.eq('deliveryDate', day))
     .collect();
 
-  const ordersByKey = new Map<string, Doc<'orders'>>();
+  // A split payment creates several Excel orders for one command (one leg per
+  // payment method) while the rider usually submits a single total, so group
+  // the legs and compare their sum against the live entry amount.
+  const ordersByKey = new Map<string, ExcelCommandLegs>();
   for (const order of orders) {
-    ordersByKey.set(normalizeCommandKey(order.commandId), order);
+    const key = normalizeCommandKey(order.commandId);
+    const group = ordersByKey.get(key);
+    if (group) {
+      group.amount += order.amount;
+      group.orders.push(order);
+    } else {
+      ordersByKey.set(key, { amount: order.amount, orders: [order] });
+    }
   }
 
   const riderNames = new Map<Id<'users'>, string>();
@@ -70,19 +102,20 @@ async function matchLiveEntries(ctx: MutationCtx, args: MatchingArgs) {
 
   for (const entry of entries) {
     const commandKey = normalizeCommandKey(entry.commandId);
-    const order = ordersByKey.get(commandKey);
+    const group = ordersByKey.get(commandKey);
 
-    if (order && order.amount === entry.amount) {
+    if (group && group.amount === entry.amount) {
       matched++;
       continue;
     }
 
-    const reason: DiscrepancyReason = order ? 'amount_mismatch' : 'missing_in_excel';
+    const reason: DiscrepancyReason = group ? 'amount_mismatch' : 'missing_in_excel';
     if (reason === 'missing_in_excel') missingInExcel++;
     else amountMismatch++;
 
     const riderName = await resolveRiderName(entry.riderUserId);
     const now = Date.now();
+    const order = group ? representativeOrder(group, entry.paymentMethod) : undefined;
 
     const existing = await ctx.db
       .query('discrepancies')
@@ -103,7 +136,7 @@ async function matchLiveEntries(ctx: MutationCtx, args: MatchingArgs) {
         riderUserId: entry.riderUserId,
         riderName,
         riderAmount: entry.amount,
-        excelAmount: order?.amount,
+        excelAmount: group?.amount,
         orderId: order?._id,
         importBatchId: args.importBatchId,
         updatedAt: now,
@@ -123,7 +156,7 @@ async function matchLiveEntries(ctx: MutationCtx, args: MatchingArgs) {
       orderId: order?._id,
       importBatchId: args.importBatchId,
       riderAmount: entry.amount,
-      excelAmount: order?.amount,
+      excelAmount: group?.amount,
       status: 'open',
       createdAt: now,
       updatedAt: now,

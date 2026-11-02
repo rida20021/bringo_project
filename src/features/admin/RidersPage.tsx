@@ -8,6 +8,7 @@ import { formatMAD, formatShortDate } from '@/lib/format';
 import { parseAmountToCentimes } from '@/lib/money';
 import { dateInputToTimestamp, todayDateInputValue } from '@/lib/dates';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 const MIN_PASSWORD_LENGTH = 8;
 const PAGE_SIZE = 20;
@@ -545,7 +546,18 @@ export default function RidersPage() {
                                 onChange={() => toggleSelected(member.userId)}
                               />
                             </td>
-                            <td>{member.displayName}</td>
+                            <td>
+                              {member.role === 'rider' ? (
+                                <Link
+                                  className="rider-profile-link"
+                                  to={`/admin/riders/${member.userId}`}
+                                >
+                                  {member.displayName}
+                                </Link>
+                              ) : (
+                                member.displayName
+                              )}
+                            </td>
                             <td className="table-muted">{member.email ?? '—'}</td>
                             <td>
                               {member.isArchived ? (

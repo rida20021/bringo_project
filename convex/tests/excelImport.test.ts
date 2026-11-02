@@ -198,6 +198,201 @@ describe('importExcelFile action', () => {
     expect(missing?.excelAmount).toBeUndefined();
   });
 
+  it('imports both split-payment legs and matches their summed total', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+    const riderUserId = await createProfile(t, 'rider');
+
+    await t.run(async (ctx) => {
+      const marketId = await ctx.db.insert('markets', {
+        name: 'Marché Central',
+        externalId: 'MKT-SPLIT',
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      await ctx.db.insert('liveEntries', {
+        riderUserId,
+        commandId: '464491',
+        commandKey: '464491',
+        marketId,
+        marketName: 'Marché Central',
+        marketExternalId: 'MKT-SPLIT',
+        amount: 15000,
+        paymentMethod: 'cash',
+        entryDate: DAY_A,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const bytes = workbookBytes([
+      ['2026-10-25', '464491', 'cash', 'Store A', 'Livreur Test', 100],
+      ['2026-10-25', '464491', 'card', 'Store A', 'Livreur Test', 50],
+    ]);
+    const result = await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .action(api.excelImport.importExcelFile, {
+        storageId: await storeWorkbook(t, bytes),
+        fileName: IMPORT_FILE_NAME,
+      });
+
+    expect(result.duplicateFile).toBe(false);
+    if (result.duplicateFile) throw new Error('expected a fresh import');
+    expect(result).toMatchObject({
+      accepted: 2,
+      rejected: 0,
+      duplicate: 0,
+      conflict: 0,
+      matched: 1,
+      amountMismatch: 0,
+      missingInExcel: 0,
+      discrepanciesCreated: 0,
+    });
+
+    const { orders, sourceRows, batch, discrepancies } = await t.run(async (ctx) => ({
+      orders: await ctx.db
+        .query('orders')
+        .withIndex('commandId', (q) => q.eq('commandId', '464491'))
+        .collect(),
+      sourceRows: await ctx.db
+        .query('sourceRows')
+        .withIndex('importBatchId', (q) => q.eq('importBatchId', result.batchId))
+        .collect(),
+      batch: await ctx.db.get(result.batchId),
+      discrepancies: await ctx.db.query('discrepancies').collect(),
+    }));
+
+    expect(orders).toHaveLength(2);
+    expect(orders.map((order) => [order.paymentMethod, order.amount]).sort()).toEqual([
+      ['card', 5000],
+      ['cash', 10000],
+    ]);
+    expect(new Set(orders.map((order) => order.riderId)).size).toBe(1);
+    expect(new Set(orders.map((order) => order.marketId)).size).toBe(1);
+    expect(new Set(orders.map((order) => order.sourceRowId)).size).toBe(2);
+
+    expect(sourceRows).toHaveLength(2);
+    expect(sourceRows.every((row) => row.validationState === 'valid')).toBe(true);
+    expect(new Set(sourceRows.map((row) => row.linkedOrderId)).size).toBe(2);
+    const splitWarning = 'Cmd #464491 : paiement partagé (cash / card)';
+    expect(sourceRows.every((row) => row.warnings?.includes(splitWarning))).toBe(true);
+    expect(batch).toMatchObject({ status: 'completed', acceptedRows: 2, conflictRows: 0 });
+    expect(discrepancies).toHaveLength(0);
+
+    const issues = await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .query(api.imports.getImportBatchIssues, { batchId: result.batchId });
+    expect(issues).toHaveLength(2);
+    expect(issues.every((issue) => issue.warnings.includes(splitWarning))).toBe(true);
+  });
+
+  it('imports a split leg with a different rider and records a warning', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+    const bytes = workbookBytes([
+      ['2026-10-25', 'CMD-RIDER-SPLIT', 'cash', 'Store A', 'Livreur A', 100],
+      ['2026-10-25', 'CMD-RIDER-SPLIT', 'card', 'Store A', 'Livreur B', 50],
+    ]);
+
+    const result = await t
+      .withIdentity({ subject: adminId, email: 'admin@bringo.test' })
+      .action(api.excelImport.importExcelFile, {
+        storageId: await storeWorkbook(t, bytes),
+        fileName: IMPORT_FILE_NAME,
+      });
+
+    expect(result.duplicateFile).toBe(false);
+    if (result.duplicateFile) throw new Error('expected a fresh import');
+    expect(result).toMatchObject({ accepted: 2, duplicate: 0, conflict: 0 });
+
+    const sourceRows = await t.run(async (ctx) =>
+      ctx.db
+        .query('sourceRows')
+        .withIndex('importBatchId', (q) => q.eq('importBatchId', result.batchId))
+        .collect()
+    );
+    const firstRow = sourceRows.find((row) => row.originalRowNumber === 2);
+    const secondRow = sourceRows.find((row) => row.originalRowNumber === 3);
+    const splitWarning = 'Cmd #CMD-RIDER-SPLIT : paiement partagé (cash / card)';
+    expect(firstRow).toMatchObject({
+      validationState: 'valid',
+      warnings: [splitWarning],
+    });
+    expect(secondRow).toMatchObject({
+      validationState: 'valid',
+      warnings: [
+        splitWarning,
+        'Split payment rider differs from order CMD-RIDER-SPLIT: rider=Livreur A',
+      ],
+    });
+  });
+
+  it('keeps same-method differences as conflicts and safely revisits split commands', async () => {
+    const t = makeT();
+    const adminId = await createProfile(t, 'admin');
+    const admin = t.withIdentity({ subject: adminId, email: 'admin@bringo.test' });
+
+    const first = await admin.action(api.excelImport.importExcelFile, {
+      storageId: await storeWorkbook(
+        t,
+        workbookBytes([
+          ['2026-10-25', 'CMD-SPLIT-REIMPORT', 'cash', 'Store A', 'Livreur Test', 100],
+          ['2026-10-25', 'CMD-SPLIT-REIMPORT', 'card', 'Store A', 'Livreur Test', 50],
+        ])
+      ),
+      fileName: IMPORT_FILE_NAME,
+    });
+    expect(first.duplicateFile).toBe(false);
+    if (first.duplicateFile) throw new Error('expected a fresh import');
+    expect(first).toMatchObject({ accepted: 2, duplicate: 0, conflict: 0 });
+
+    // A different workbook revisits both existing legs. This used to abort the
+    // entire mutation because the commandId index query called `.unique()`.
+    const revisit = await admin.action(api.excelImport.importExcelFile, {
+      storageId: await storeWorkbook(
+        t,
+        workbookBytes([
+          ['2026-10-25', 'CMD-SPLIT-REIMPORT', 'cash', 'Store A', 'Livreur Test', 100],
+          ['2026-10-25', 'CMD-SPLIT-REIMPORT', 'card', 'Store A', 'Livreur Test', 50],
+          ['2026-10-25', 'CMD-UNRELATED', 'cash', 'Store A', 'Livreur Test', 25],
+        ])
+      ),
+      fileName: IMPORT_FILE_NAME,
+    });
+    expect(revisit.duplicateFile).toBe(false);
+    if (revisit.duplicateFile) throw new Error('expected a fresh import');
+    expect(revisit).toMatchObject({ accepted: 1, duplicate: 2, conflict: 0 });
+
+    const conflict = await admin.action(api.excelImport.importExcelFile, {
+      storageId: await storeWorkbook(
+        t,
+        workbookBytes([
+          ['2026-10-25', 'CMD-SPLIT-REIMPORT', 'cash', 'Store A', 'Livreur Test', 90],
+        ])
+      ),
+      fileName: IMPORT_FILE_NAME,
+    });
+    expect(conflict.duplicateFile).toBe(false);
+    if (conflict.duplicateFile) throw new Error('expected a fresh import');
+    expect(conflict).toMatchObject({ accepted: 0, duplicate: 0, conflict: 1 });
+
+    const { orders, batch, sourceRows } = await t.run(async (ctx) => ({
+      orders: await ctx.db
+        .query('orders')
+        .withIndex('commandId', (q) => q.eq('commandId', 'CMD-SPLIT-REIMPORT'))
+        .collect(),
+      batch: await ctx.db.get(conflict.batchId),
+      sourceRows: await ctx.db
+        .query('sourceRows')
+        .withIndex('importBatchId', (q) => q.eq('importBatchId', conflict.batchId))
+        .collect(),
+    }));
+    expect(orders).toHaveLength(2);
+    expect(batch).toMatchObject({ status: 'needs_review', conflictRows: 1 });
+    expect(sourceRows[0]).toMatchObject({ validationState: 'conflict' });
+  });
+
   it('auto-provisions markets from store fields and links orders to them', async () => {
     const t = makeT();
     const adminId = await createProfile(t, 'admin');

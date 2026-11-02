@@ -713,6 +713,11 @@ a {
   color: var(--red);
 }
 
+.badge-info {
+  background: #e8f1fb;
+  color: #245b8f;
+}
+
 /* ---------- Empty states ---------- */
 
 .empty {
@@ -1213,6 +1218,10 @@ a {
   background: var(--surface);
 }
 
+.import-issue.is-info {
+  border-left-color: #3978ad;
+}
+
 .import-issue-head {
   display: flex;
   flex-wrap: wrap;
@@ -1236,6 +1245,10 @@ a {
   padding-left: 18px;
   font-size: 12.5px;
   color: var(--muted);
+}
+
+.import-issue-messages .is-info {
+  color: #245b8f;
 }
 
 .form-success {
@@ -1344,6 +1357,18 @@ a {
   color: var(--primary);
 }
 
+.rider-profile-link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.rider-profile-link:hover {
+  color: var(--primary-dark);
+  text-decoration-thickness: 2px;
+}
+
 .rider-loss-row td {
   padding: 14px 16px 18px;
   border-bottom: 1px solid var(--line);
@@ -1438,6 +1463,203 @@ a {
 
 .modal-head h2 {
   font-size: 18px;
+}
+
+/* ---------- Admin: Rider 360 ---------- */
+
+.rider-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rider-detail-back:hover {
+  color: var(--primary);
+}
+
+.rider-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.rider-detail-identity-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rider-detail-identity-line h1 {
+  font-size: clamp(27px, 3vw, 35px);
+}
+
+.rider-detail-business-date {
+  margin-top: 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--accent);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.rider-detail-ledger {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.7fr) minmax(0, 2fr);
+  margin-bottom: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.rider-debt {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 156px;
+  padding: 24px;
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.rider-debt.has-debt {
+  background: var(--red);
+}
+
+.rider-debt-label,
+.rider-debt-note {
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.72);
+}
+
+.rider-debt strong {
+  margin: 8px 0 4px;
+  font-family: var(--font-mono);
+  font-size: clamp(24px, 3vw, 31px);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rider-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rider-detail-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 78px;
+  padding: 16px 18px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.rider-detail-stat:nth-child(3n) {
+  border-right: 0;
+}
+
+.rider-detail-stat:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.rider-detail-stat span {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.rider-detail-stat strong {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rider-detail-command {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rider-receipt-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rider-receipt-status a,
+.rider-receipt-reason {
+  font-size: 11.5px;
+}
+
+.rider-receipt-reason {
+  max-width: 220px;
+  margin-top: 5px;
+  color: var(--red);
+  white-space: normal;
+}
+
+.rider-reset-modal {
+  width: min(600px, 100%);
+}
+
+.rider-reset-form {
+  display: grid;
+  gap: 16px;
+}
+
+.rider-reset-warning {
+  padding: 11px 13px;
+  border-left: 3px solid var(--accent);
+  background: var(--amber-light);
+  color: var(--amber);
+  font-size: 13px;
+}
+
+.temporary-password-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.temporary-password-box > span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.temporary-password-box code {
+  align-self: center;
+  overflow-wrap: anywhere;
+  color: var(--primary-dark);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.temporary-password-actions,
+.rider-reset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rider-reset-actions .button-ghost {
+  height: 40px;
 }
 
 /* ---------- Admin: receipt review queue ---------- */
@@ -2134,6 +2356,50 @@ a {
 
   .page-head h1 {
     font-size: 25px;
+  }
+}
+
+@media (max-width: 780px) {
+  .rider-detail-head {
+    flex-direction: column;
+  }
+
+  .rider-detail-head .button {
+    width: 100%;
+  }
+
+  .rider-detail-ledger {
+    grid-template-columns: 1fr;
+  }
+
+  .rider-debt {
+    min-height: 132px;
+  }
+
+  .rider-detail-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rider-detail-stat:nth-child(3n) {
+    border-right: 1px solid var(--line);
+  }
+
+  .rider-detail-stat:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .rider-detail-stat:nth-last-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rider-detail-stat:last-child {
+    grid-column: 1 / -1;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .temporary-password-box {
+    grid-template-columns: 1fr;
   }
 }
 

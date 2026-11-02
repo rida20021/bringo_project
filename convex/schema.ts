@@ -106,6 +106,7 @@ export default defineSchema({
     createdAt: v.number(),
   }).index('liveEntryId', ['liveEntryId'])
     .index('riderUserId', ['riderUserId'])
+    .index('riderKind', ['riderUserId', 'kind'])
     .index('status', ['status']),
 
   discrepancies: defineTable({
@@ -189,6 +190,10 @@ export default defineSchema({
     .index('validationState', ['validationState']),
 
   orders: defineTable({
+    /**
+     * TikTak command number. Deliberately NOT unique: a split payment (part
+     * cash, part card) produces one order row per payment method.
+     */
     commandId: v.string(),
     deliveryDate: v.number(),
     riderId: v.id('riders'),

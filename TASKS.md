@@ -54,8 +54,9 @@
 - [x] **Task 6.2.6: Excel Rider Sync.** Add a button on the Équipe page to view Riders imported from the Excel file who do not yet have Auth accounts. Allow the Admin to create accounts for them to link the `riders` table to `userProfiles`.
 - [x] **Task 6.2.7: Auto-provision Markets.** During Excel import, create missing `markets` from `store_internal_name` / `store_external_id`, dedupe with an in-memory Map, leave `city` empty, and link orders via `orders.marketId`.
 - [x] **Task 6.2.8: Scale the Unlinked Riders table.** Add a local search box (name/alias) and "Charger plus" pagination (20 per page) to the Équipe page.
-- [ ] **Task 6.2.7: Auto-provision Markets on Excel Import.** Update the Excel parser to automatically create new markets in the database if they don't exist, using the `store_external_id` and `store_internal_name` from the uploaded file.
-- [ ] **Task 6.2.8: Scale Thinking for Unlinked Riders.** Add a local search box and pagination (20 per page) to the "Livreurs Excel non liés" table so the Admin can easily find riders when the list grows to 60+ items.
+- [x] **Task 6.2.9: Split Payments Support.** Update the Excel import logic to allow the same Command ID to have multiple rows if the payment method is different (e.g., half cash, half card). Update the matching engine to sum split amounts.
+- [x] **Task 6.2.10: Split Payment UI Visibility.** Update `convex/imports.ts` to tag split payments in `sourceRows`, and update `ImportsPanel.tsx` to display a "Paiement Partagé" (Split Payment) info badge so the Admin can see it.
+- [x] **Task 6.2.11: Split Payment Visibility Fix.** Update the warning string to explicitly state `Cmd #ID : split payment (method1/method2)` and fix `ImportsPanel.tsx` so warning-only batches can be expanded to show the blue info badges.
 
 ### 6.3 Import Control (Imports Récents)
 - [x] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").
@@ -66,14 +67,19 @@
 - [x] **Task 6.4.1:** Add a date picker to the Supervisor "Tableau de bord" and a start/end range picker to the Admin "Vue d'ensemble", persisted in the URL and resolved with Casablanca day boundaries.
 
 ### 6.5 Advanced Rider & Financial Edge Cases
-- [ ] **Task 6.5.1:** Build the Admin "Rider 360 View" (dedicated page showing rider stats and password reset).
+- [x] **Task 6.5.1:** Build the Admin "Rider 360 View" (dedicated page showing rider stats and password reset).
 - [x] **Task 6.5.2:** Implement Rider Debt Tracking. Admin can record lost cash as a debt against the Rider.
 - [x] **Task 6.5.3:** Implement Supervisor Debt Tracking. Approving a short deposit creates a debt against the Supervisor.
-- [ ] **Task 6.5.4:** Implement the Midnight Grace Period (00:00 - 03:00 AM counts for previous day).  
+- [x] **Task 6.5.4:** Implement the Midnight Grace Period (00:00 - 03:00 AM counts for previous day).
 - [x] **Task 6.5.5: Searchable Rider Dropdown.** Replace the native `<select>` in the Supervisor's Bank Deposit form with a searchable dropdown so Supervisors can type a Rider's name instead of scrolling through a massive list.
 - [x] **Task 6.5.6: Supervisor Cash Collection.** Add a form to `SupervisorPage.tsx` so Supervisors can record physical cash collected from a Rider. Update `reconciliation.ts` so this counts towards the "Encaissé" KPI.
 - [x] **Task 6.5.7: Admin Deposit Approval UI.** Build the Admin panel to review, approve, and reject Supervisor bank deposits.
 - [x] **Task 6.5.8: Fix KPI Range Bug.** Fix the timestamp equality bug in `reconciliation.ts` so approved deposits show up correctly in the dashboard.
+
+## Milestone 6.6: Live Operations & Dashboard Intelligence
+- [ ] **Task 6.6.1: Live Mode Dashboard.** Update `reconciliation.ts` so that if no Excel file (`orders`) exists for the selected date, the Dashboard KPIs fall back to calculating totals from `liveEntries` (Live Forecasts). Add a UI badge to distinguish "Live Mode" from "Audit Mode".
+- [ ] **Task 6.6.2: Rider 360 Live Feed.** Ensure the Rider 360 View includes a live feed of the Rider's `liveEntries` and `liveEntryReceipts` for today, so the Admin can track their progress in real-time.
+- [ ] **Task 6.6.3: Midnight Grace Period (Live Mode Sync).** Ensure that the Midnight Grace Period logic applies to the Live Mode Dashboard so late-night entries show up on the correct day's Live Feed.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

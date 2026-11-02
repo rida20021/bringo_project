@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel, Id } from './_generated/dataModel';
 import { requireRider, requireSupervisor } from './lib/auth';
-import { startOfDayCasablanca } from './lib/dates';
+import { liveEntryDateCasablanca } from './lib/dates';
 import { validateReceiptFile } from './receipts';
 
 const livePaymentMethod = v.union(v.literal('cash'), v.literal('tpe'), v.literal('card'));
@@ -142,7 +142,8 @@ export const createLiveOrder = mutation({
       throw new Error('Card payments do not carry a receipt');
     }
 
-    const entryDate = startOfDayCasablanca(Date.now());
+    const now = Date.now();
+    const entryDate = liveEntryDateCasablanca(now);
     const duplicate = await ctx.db
       .query('liveEntries')
       .withIndex('riderCommandDate', (q) =>
@@ -158,7 +159,6 @@ export const createLiveOrder = mutation({
       ? await validateReceiptFile(ctx, args.receipt)
       : null;
 
-    const now = Date.now();
     const liveEntryId = await ctx.db.insert('liveEntries', {
       riderUserId: appUser.userId,
       commandId,
@@ -197,7 +197,7 @@ export const getMyLiveEntries = query({
   args: { entryDate: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const appUser = await requireRider(ctx);
-    const entryDate = args.entryDate ?? startOfDayCasablanca(Date.now());
+    const entryDate = args.entryDate ?? liveEntryDateCasablanca(Date.now());
 
     const entries = await ctx.db
       .query('liveEntries')
@@ -233,4 +233,3 @@ export const getMyLiveEntries = query({
     return withReceipts.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
-

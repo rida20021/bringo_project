@@ -1,15 +1,22 @@
 import { action, internalQuery, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { createAccount } from '@convex-dev/auth/server';
+import {
+  createAccount,
+  invalidateSessions,
+  modifyAccountCredentials,
+} from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
 import { getAppUser, requireAdmin } from './lib/auth';
 import { hasAdminProfile } from './lib/provisioning';
 import { insertAuditEvent } from './audit';
+import { liveEntryDateCasablanca } from './lib/dates';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 128;
 const MAX_DISPLAY_NAME_LENGTH = 120;
+const MIN_TEMPORARY_PASSWORD_LENGTH = 12;
+const RECENT_TPE_RECEIPT_LIMIT = 10;
 
 export const getCurrentUser = query({
   args: {},
@@ -85,6 +92,122 @@ export const listTeamMembers = query({
     );
 
     return members.sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'));
+  },
+});
+
+/** Complete, admin-only operational view of one rider. */
+export const getRiderProfileData = query({
+  args: { riderUserId: v.id('users') },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const [user, profile] = await Promise.all([
+      ctx.db.get(args.riderUserId),
+      ctx.db
+        .query('userProfiles')
+        .withIndex('userId', (q) => q.eq('userId', args.riderUserId))
+        .unique(),
+    ]);
+
+    if (!user || !profile || profile.role !== 'rider') return null;
+
+    const businessDate = liveEntryDateCasablanca(Date.now());
+    const entries = await ctx.db
+      .query('liveEntries')
+      .withIndex('riderEntryDate', (q) =>
+        q.eq('riderUserId', args.riderUserId).eq('entryDate', businessDate)
+      )
+      .collect();
+
+    const liveEntries = await Promise.all(
+      entries.map(async (entry) => {
+        const receipts = await ctx.db
+          .query('liveEntryReceipts')
+          .withIndex('liveEntryId', (q) => q.eq('liveEntryId', entry._id))
+          .collect();
+
+        return {
+          ...entry,
+          receipts: await Promise.all(
+            receipts.map(async (receipt) => ({
+              receiptId: receipt._id,
+              kind: receipt.kind,
+              status: receipt.status,
+              fileName: receipt.fileName,
+              createdAt: receipt.createdAt,
+              reviewedAt: receipt.reviewedAt,
+              rejectionReason: receipt.rejectionReason,
+              url: await ctx.storage.getUrl(receipt.storageId),
+            }))
+          ),
+        };
+      })
+    );
+
+    const recentReceiptDocs = await ctx.db
+      .query('liveEntryReceipts')
+      .withIndex('riderKind', (q) =>
+        q.eq('riderUserId', args.riderUserId).eq('kind', 'tpe')
+      )
+      .order('desc')
+      .take(RECENT_TPE_RECEIPT_LIMIT);
+
+    const recentTpeRows = await Promise.all(
+      recentReceiptDocs.map(async (receipt) => {
+        const entry = await ctx.db.get(receipt.liveEntryId);
+        if (!entry) return null;
+
+        return {
+          receiptId: receipt._id,
+          status: receipt.status,
+          fileName: receipt.fileName,
+          mimeType: receipt.mimeType,
+          createdAt: receipt.createdAt,
+          reviewedAt: receipt.reviewedAt,
+          rejectionReason: receipt.rejectionReason,
+          url: await ctx.storage.getUrl(receipt.storageId),
+          entry: {
+            liveEntryId: entry._id,
+            commandId: entry.commandId,
+            marketName: entry.marketName,
+            amount: entry.amount,
+            entryDate: entry.entryDate,
+          },
+        };
+      })
+    );
+
+    const stats = {
+      entryCount: entries.length,
+      totalAmount: 0,
+      cashAmount: 0,
+      tpeAmount: 0,
+      cardAmount: 0,
+    };
+    for (const entry of entries) {
+      stats.totalAmount += entry.amount;
+      if (entry.paymentMethod === 'cash') stats.cashAmount += entry.amount;
+      else if (entry.paymentMethod === 'tpe') stats.tpeAmount += entry.amount;
+      else stats.cardAmount += entry.amount;
+    }
+
+    return {
+      businessDate,
+      profile: {
+        userId: user._id,
+        name: profile.displayName,
+        email: user.email,
+        role: profile.role,
+        debtBalance: profile.debtBalance ?? 0,
+        isActive: profile.isActive,
+        isArchived: profile.isArchived === true,
+      },
+      stats,
+      liveEntries: liveEntries.sort((a, b) => b.createdAt - a.createdAt),
+      recentTpeReceipts: recentTpeRows.filter(
+        (row): row is NonNullable<typeof row> => row !== null
+      ),
+    };
   },
 });
 
@@ -220,6 +343,61 @@ export const createTeamMember = action({
     });
 
     return { userId: user._id };
+  },
+});
+
+/**
+ * Replace a rider's password through Convex Auth and revoke every active
+ * session. The temporary password is supplied by the admin UI and is never
+ * persisted outside the auth account's password hash.
+ */
+export const resetRiderPassword = action({
+  args: {
+    riderUserId: v.id('users'),
+    temporaryPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const resetContext = await ctx.runQuery(internal.users.getRiderPasswordResetContext, {
+      riderUserId: args.riderUserId,
+    });
+
+    if (
+      args.temporaryPassword.length < MIN_TEMPORARY_PASSWORD_LENGTH ||
+      args.temporaryPassword.length > MAX_PASSWORD_LENGTH
+    ) {
+      throw new Error(
+        `Temporary password must be between ${MIN_TEMPORARY_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters`
+      );
+    }
+    if (
+      !/[a-z]/.test(args.temporaryPassword) ||
+      !/[A-Z]/.test(args.temporaryPassword) ||
+      !/[0-9]/.test(args.temporaryPassword) ||
+      !/[^A-Za-z0-9]/.test(args.temporaryPassword)
+    ) {
+      throw new Error(
+        'Temporary password must contain uppercase, lowercase, number, and symbol characters'
+      );
+    }
+
+    await modifyAccountCredentials(ctx, {
+      provider: 'password',
+      account: {
+        id: resetContext.providerAccountId,
+        secret: args.temporaryPassword,
+      },
+    });
+    await invalidateSessions(ctx, { userId: resetContext.riderUserId });
+
+    await ctx.runMutation(internal.audit.logAuditEvent, {
+      actorId: resetContext.adminUserId,
+      action: 'rider.password_reset',
+      targetType: 'users',
+      targetId: resetContext.riderUserId,
+      afterSummary: { sessionsInvalidated: true },
+    });
+
+    return { success: true };
   },
 });
 
@@ -421,6 +599,40 @@ export const getCallerRole = internalQuery({
   handler: async (ctx) => {
     const appUser = await requireAdmin(ctx);
     return { userId: appUser.userId, role: appUser.role };
+  },
+});
+
+/** Resolve and authorize the exact password account used by a reset action. */
+export const getRiderPasswordResetContext = internalQuery({
+  args: { riderUserId: v.id('users') },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const [rider, profile] = await Promise.all([
+      ctx.db.get(args.riderUserId),
+      ctx.db
+        .query('userProfiles')
+        .withIndex('userId', (q) => q.eq('userId', args.riderUserId))
+        .unique(),
+    ]);
+    if (!rider || !profile || profile.role !== 'rider') {
+      throw new Error('Rider account not found');
+    }
+    if (profile.isArchived) throw new Error('Archived rider accounts cannot be reset');
+
+    const passwordAccount = await ctx.db
+      .query('authAccounts')
+      .withIndex('userIdAndProvider', (q) =>
+        q.eq('userId', args.riderUserId).eq('provider', 'password')
+      )
+      .unique();
+    if (!passwordAccount) throw new Error('Password account not found for this rider');
+
+    return {
+      adminUserId: admin.userId,
+      riderUserId: rider._id,
+      providerAccountId: passwordAccount.providerAccountId,
+    };
   },
 });
 

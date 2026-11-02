@@ -105,7 +105,8 @@ async function addOrder(
   world: World,
   commandId: string,
   amount: number,
-  deliveryDate = DAY_A
+  deliveryDate = DAY_A,
+  paymentMethod: 'cash' | 'card' | 'online_payment' = 'cash'
 ): Promise<Id<'orders'>> {
   return t.run(async (ctx) =>
     ctx.db.insert('orders', {
@@ -113,7 +114,7 @@ async function addOrder(
       deliveryDate,
       riderId: world.riderRecordId,
       rawRiderName: 'Livreur Test',
-      paymentMethod: 'cash',
+      paymentMethod,
       amount,
       sourceRowId: world.sourceRowId,
       importBatchId: world.batchId,
@@ -128,7 +129,8 @@ async function addLiveEntry(
   world: World,
   commandId: string,
   amount: number,
-  entryDate = DAY_A
+  entryDate = DAY_A,
+  paymentMethod: 'cash' | 'tpe' | 'card' = 'cash'
 ): Promise<Id<'liveEntries'>> {
   return t.run(async (ctx) =>
     ctx.db.insert('liveEntries', {
@@ -139,7 +141,7 @@ async function addLiveEntry(
       marketName: 'Marché Central',
       marketExternalId: 'MKT-1',
       amount,
-      paymentMethod: 'cash',
+      paymentMethod,
       entryDate,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -200,6 +202,48 @@ describe('matching engine', () => {
     expect(missing?.excelAmount).toBeUndefined();
 
     expect(rows.some((row) => row.commandId === 'CMD-004')).toBe(false);
+  });
+
+  it('sums split-payment legs and links a mismatch to the method-matching leg', async () => {
+    const t = makeT();
+    const world = await seedWorld(t);
+
+    await addLiveEntry(t, world, 'CMD-SPLIT-MATCH', 15000);
+    await addOrder(t, world, 'CMD-SPLIT-MATCH', 10000, DAY_A, 'cash');
+    await addOrder(t, world, 'CMD-SPLIT-MATCH', 5000, DAY_A, 'card');
+
+    await addLiveEntry(t, world, 'CMD-SPLIT-MISMATCH', 14000, DAY_A, 'tpe');
+    await addOrder(t, world, 'CMD-SPLIT-MISMATCH', 10000, DAY_A, 'cash');
+    const cardOrderId = await addOrder(
+      t,
+      world,
+      'CMD-SPLIT-MISMATCH',
+      5000,
+      DAY_A,
+      'card'
+    );
+
+    const admin = adminClient(t, world);
+    const result = await admin.mutation(api.discrepancies.runMatchingForDate, {
+      reportDate: DAY_A,
+    });
+
+    expect(result).toMatchObject({
+      matched: 1,
+      missingInExcel: 0,
+      amountMismatch: 1,
+      discrepanciesCreated: 1,
+    });
+
+    const rows = await admin.query(api.discrepancies.getDiscrepancies, {});
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      commandId: 'CMD-SPLIT-MISMATCH',
+      riderAmount: 14000,
+      excelAmount: 15000,
+      orderId: cardOrderId,
+      reason: 'amount_mismatch',
+    });
   });
 
   it('never creates a discrepancy for an Excel order without a live entry', async () => {

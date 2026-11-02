@@ -11,6 +11,7 @@ import SupervisorPage from './features/supervisor/SupervisorPage';
 import AdminDashboard from './features/admin/AdminDashboard';
 import MarketsPage from './features/admin/MarketsPage';
 import RidersPage from './features/admin/RidersPage';
+import RiderDetailPage from './features/admin/RiderDetailPage';
 import RiderHome from './features/rider/RiderHome';
 import NotFound from './components/NotFound';
 
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="markets" element={<AdminRoute><MarketsPage /></AdminRoute>} />
           <Route path="riders" element={<AdminRoute><RidersPage /></AdminRoute>} />
+          <Route path="riders/:riderId" element={<AdminRoute><RiderDetailPage /></AdminRoute>} />
         </Route>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />

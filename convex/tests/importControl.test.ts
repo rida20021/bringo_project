@@ -357,24 +357,44 @@ describe('getImportFileUrl', () => {
 });
 
 describe('getImportBatchIssues', () => {
-  it('returns only invalid and conflicting rows ordered by row number', async () => {
+  it('returns warning, invalid, and conflicting rows ordered by row number', async () => {
     const t = makeT();
     const adminId = await createProfile(t, 'admin');
     const admin = t.withIdentity({ subject: adminId, email: 'admin@bringo.test' });
     const seeded = await seedBatch(t, 'F', { withOrder: false });
 
+    await t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query('sourceRows')
+        .withIndex('importBatchId', (q) => q.eq('importBatchId', seeded.batchId))
+        .collect();
+      const validRow = rows.find((row) => row.validationState === 'valid');
+      if (!validRow) throw new Error('Expected seeded valid row');
+      await ctx.db.patch(validRow._id, {
+        warnings: ['Cmd #CMD-F-OK : paiement partagé (cash / card)'],
+      });
+    });
+
     const issues = await admin.query(api.imports.getImportBatchIssues, {
       batchId: seeded.batchId,
     });
 
-    expect(issues).toHaveLength(2);
-    expect(issues.map((issue) => issue.rowNumber)).toEqual([3, 4]);
-    expect(issues.map((issue) => issue.validationState)).toEqual(['invalid', 'conflict']);
+    expect(issues).toHaveLength(3);
+    expect(issues.map((issue) => issue.rowNumber)).toEqual([2, 3, 4]);
+    expect(issues.map((issue) => issue.validationState)).toEqual([
+      'valid',
+      'invalid',
+      'conflict',
+    ]);
     expect(issues[0]).toMatchObject({
+      commandId: 'CMD-F-OK',
+      warnings: ['Cmd #CMD-F-OK : paiement partagé (cash / card)'],
+    });
+    expect(issues[1]).toMatchObject({
       commandId: 'CMD-F-BAD',
       errors: ['Invalid amount'],
     });
-    expect(issues[1]).toMatchObject({
+    expect(issues[2]).toMatchObject({
       commandId: 'CMD-F-CONFLICT',
       errors: ['Conflicts with existing order'],
     });

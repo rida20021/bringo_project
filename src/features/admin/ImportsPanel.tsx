@@ -7,6 +7,11 @@ import { formatDateTime, formatShortDate } from '@/lib/format';
 
 const DELETE_CONFIRMATION =
   'Êtes-vous sûr ? Cela supprimera toutes les commandes et écarts associés.';
+const SPLIT_PAYMENT_WARNING_MARKER = ': paiement partagé (';
+
+function isSplitPaymentWarning(message: string): boolean {
+  return message.includes(SPLIT_PAYMENT_WARNING_MARKER);
+}
 
 function readError(error: unknown): string {
   if (error instanceof Error) {
@@ -24,39 +29,99 @@ function ImportIssues({ batchId }: { batchId: Id<'importBatches'> }) {
   }
 
   if (issues.length === 0) {
-    return <p className="review-loading">Aucune ligne en erreur pour cet import.</p>;
+    return <p className="review-loading">Aucune erreur ni information pour cet import.</p>;
   }
 
   return (
     <ul className="import-issue-list">
-      {issues.map((issue) => (
-        <li className="import-issue" key={issue._id}>
-          <div className="import-issue-head">
-            <span
-              className={`badge ${
-                issue.validationState === 'conflict' ? 'badge-danger' : 'badge-pending'
-              }`}
-            >
-              <span className="badge-dot" aria-hidden="true" />
-              {issue.validationState === 'conflict' ? 'Conflit' : 'Invalide'}
-            </span>
-            <span className="import-issue-row">Ligne {issue.rowNumber}</span>
-            {issue.commandId ? (
-              <code className="import-issue-command">{issue.commandId}</code>
-            ) : null}
-          </div>
-          {issue.errors.length > 0 ? (
-            <ul className="import-issue-messages">
-              {issue.errors.map((message, index) => (
-                <li key={`${index}-${message}`}>{message}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="import-issue-messages">Aucun détail fourni.</p>
-          )}
-        </li>
-      ))}
+      {issues.map((issue) => {
+        const hasSplitPaymentWarning = issue.warnings.some(isSplitPaymentWarning);
+        const badge =
+          issue.validationState === 'conflict'
+            ? { className: 'badge-danger', label: 'Conflit' }
+            : issue.validationState === 'invalid'
+              ? { className: 'badge-pending', label: 'Invalide' }
+              : hasSplitPaymentWarning
+                ? { className: 'badge-info', label: 'Paiement partagé' }
+                : { className: 'badge-neutral', label: 'Information' };
+
+        return (
+          <li
+            className={`import-issue${hasSplitPaymentWarning ? ' is-info' : ''}`}
+            key={issue._id}
+          >
+            <div className="import-issue-head">
+              <span className={`badge ${badge.className}`}>
+                <span className="badge-dot" aria-hidden="true" />
+                {badge.label}
+              </span>
+              <span className="import-issue-row">Ligne {issue.rowNumber}</span>
+              {issue.commandId ? (
+                <code className="import-issue-command">{issue.commandId}</code>
+              ) : null}
+            </div>
+            {issue.errors.length > 0 || issue.warnings.length > 0 ? (
+              <ul className="import-issue-messages">
+                {issue.errors.map((message, index) => (
+                  <li key={`error-${index}-${message}`}>{message}</li>
+                ))}
+                {issue.warnings.map((message, index) => (
+                  <li
+                    className={isSplitPaymentWarning(message) ? 'is-info' : undefined}
+                    key={`warning-${index}-${message}`}
+                  >
+                    {message}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="import-issue-messages">Aucun détail fourni.</p>
+            )}
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+interface ImportFileToggleProps {
+  batchId: Id<'importBatches'>;
+  fileName: string;
+  isAdmin: boolean;
+  isExpanded: boolean;
+  issuesId: string;
+  onToggle: () => void;
+}
+
+function ImportFileToggle({
+  batchId,
+  fileName,
+  isAdmin,
+  isExpanded,
+  issuesId,
+  onToggle,
+}: ImportFileToggleProps) {
+  const issues = useQuery(api.imports.getImportBatchIssues, isAdmin ? { batchId } : 'skip');
+  const hasDetails =
+    issues?.some((issue) => issue.errors.length > 0 || issue.warnings.length > 0) ?? false;
+
+  if (!isAdmin || !hasDetails) {
+    return <span className="import-file-name">{fileName}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      className="import-file-toggle"
+      aria-expanded={isExpanded}
+      aria-controls={issuesId}
+      onClick={onToggle}
+    >
+      <span className="accordion-chevron" aria-hidden="true">
+        ▶
+      </span>
+      <span className="import-file-name">{fileName}</span>
+    </button>
   );
 }
 
@@ -130,7 +195,7 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
           <h2>Imports récents</h2>
           <p className="panel-sub">
             Rapports reçus et état de traitement
-            {isAdmin ? ' · cliquez sur un fichier pour voir le détail des erreurs' : ''}
+            {isAdmin ? ' · cliquez sur un fichier pour voir les erreurs et informations' : ''}
           </p>
         </div>
         <span className="panel-count">{conflictRows} conflit(s)</span>
@@ -163,7 +228,6 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
             </thead>
             <tbody>
               {batches.map((batch) => {
-                const hasIssues = batch.rejectedRows > 0 || batch.conflictRows > 0;
                 const isExpanded = expandedId === batch._id;
                 const isDownloading = downloadingId === batch._id;
                 const isDeleting = deletingId === batch._id;
@@ -173,22 +237,14 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
                   <Fragment key={batch._id}>
                     <tr className={isExpanded ? 'import-row is-expanded' : 'import-row'}>
                       <td className="table-file">
-                        {isAdmin && hasIssues ? (
-                          <button
-                            type="button"
-                            className="import-file-toggle"
-                            aria-expanded={isExpanded}
-                            aria-controls={issuesId}
-                            onClick={() => toggleBatch(batch._id)}
-                          >
-                            <span className="accordion-chevron" aria-hidden="true">
-                              ▶
-                            </span>
-                            <span className="import-file-name">{batch.attachmentName}</span>
-                          </button>
-                        ) : (
-                          <span className="import-file-name">{batch.attachmentName}</span>
-                        )}
+                        <ImportFileToggle
+                          batchId={batch._id}
+                          fileName={batch.attachmentName}
+                          isAdmin={isAdmin}
+                          isExpanded={isExpanded}
+                          issuesId={issuesId}
+                          onToggle={() => toggleBatch(batch._id)}
+                        />
                       </td>
                       <td>{formatShortDate(batch.reportDate)}</td>
                       <td className="numeric amount">
