@@ -63,7 +63,9 @@ export const reviewBankDeposit = mutation({
     if (deposit.status !== 'submitted' && deposit.status !== 'pending_review') {
       throw new Error('Deposit is not awaiting review');
     }
-    if (args.action === 'reject' && !args.reason?.trim()) throw new Error('A rejection reason is required');
+
+    const reason = args.reason?.trim();
+    if (args.action === 'reject' && !reason) throw new Error('A rejection reason is required');
 
     if (args.action === 'approve') {
       await ctx.db.patch(args.depositId, {
@@ -76,7 +78,7 @@ export const reviewBankDeposit = mutation({
         status: 'rejected',
         reviewedBy: appUser.userId,
         reviewedAt: Date.now(),
-        rejectionReason: args.reason,
+        rejectionReason: reason,
       });
     }
   },
@@ -125,3 +127,71 @@ export const getDepositAllocations = query({
       .collect();
   },
 });
+
+/**
+ * Review queue for supervisor-recorded bank deposits. Supervisors and admins
+ * may read it; only admins may approve or reject. Enriches each row with the
+ * supervisor/rider names and a signed URL for the receipt.
+ */
+export const listPendingBankDeposits = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireSupervisor(ctx);
+
+    const requestedLimit = args.limit ?? 50;
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.floor(requestedLimit), 1), 100)
+      : 50;
+
+    // `reviewBankDeposit` accepts both statuses, and the KPI counts both.
+    const statuses = ['pending_review', 'submitted'] as const;
+    const deposits = (
+      await Promise.all(
+        statuses.map((status) =>
+          ctx.db
+            .query('bankDeposits')
+            .withIndex('status', (q) => q.eq('status', status))
+            .order('desc')
+            .take(limit)
+        )
+      )
+    ).flat();
+
+    const rows = await Promise.all(
+      deposits.map(async (deposit) => {
+        const supervisor = await ctx.db.get(deposit.depositedBy);
+        const supervisorProfile = await ctx.db
+          .query('userProfiles')
+          .withIndex('userId', (q) => q.eq('userId', deposit.depositedBy))
+          .unique();
+        const rider = deposit.riderId ? await ctx.db.get(deposit.riderId) : null;
+        const receiptUrl =
+          deposit.evidenceStorageIds.length > 0
+            ? await ctx.storage.getUrl(deposit.evidenceStorageIds[0])
+            : null;
+
+        return {
+          depositId: deposit._id,
+          amount: deposit.amount,
+          depositDate: deposit.depositDate,
+          createdAt: deposit.createdAt,
+          status: deposit.status,
+          receiptUrl,
+          supervisor: {
+            userId: deposit.depositedBy,
+            displayName:
+              supervisorProfile?.displayName ??
+              supervisor?.name ??
+              supervisor?.email ??
+              'Superviseur',
+            email: supervisor?.email ?? null,
+          },
+          rider: rider ? { riderId: rider._id, name: rider.canonicalName } : null,
+        };
+      })
+    );
+
+    return rows.sort((a, b) => b.depositDate - a.depositDate).slice(0, limit);
+  },
+});
+

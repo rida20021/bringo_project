@@ -29,6 +29,7 @@ export default function SupervisorPage() {
   const createBankDeposit = useMutation(api.deposits.createBankDeposit);
 
   const [depositRiderId, setDepositRiderId] = useState('');
+  const [riderSearch, setRiderSearch] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositFile, setDepositFile] = useState<File | null>(null);
   const [depositFileKey, setDepositFileKey] = useState(0);
@@ -39,8 +40,22 @@ export default function SupervisorPage() {
 
   const activeRiders = riders;
 
+  const normalizedRiderSearch = riderSearch.trim().toLocaleLowerCase('fr');
+  const filteredRiders = normalizedRiderSearch
+    ? activeRiders.filter((rider) =>
+        rider.canonicalName.toLocaleLowerCase('fr').includes(normalizedRiderSearch)
+      )
+    : activeRiders;
+  const selectedRider = activeRiders.find((rider) => rider._id === depositRiderId);
+  // Keep the current selection visible even if it no longer matches the search.
+  const riderOptions =
+    selectedRider && !filteredRiders.some((rider) => rider._id === selectedRider._id)
+      ? [selectedRider, ...filteredRiders]
+      : filteredRiders;
+
   const resetDepositForm = () => {
     setDepositRiderId('');
+    setRiderSearch('');
     setDepositAmount('');
     setDepositFile(null);
     setDepositFileError(null);
@@ -138,6 +153,19 @@ export default function SupervisorPage() {
 
         <form className="rider-form" onSubmit={handleDepositSubmit} noValidate>
           <label className="field">
+            <span className="field-label">Rechercher un livreur</span>
+            <input
+              type="search"
+              name="riderSearch"
+              value={riderSearch}
+              onChange={(event) => setRiderSearch(event.target.value)}
+              placeholder="Tapez un nom…"
+              autoComplete="off"
+            />
+            <span className="field-hint">Filtre la liste ci-dessous en temps réel.</span>
+          </label>
+
+          <label className="field">
             <span className="field-label">Livreur</span>
             <select
               name="riderId"
@@ -148,9 +176,11 @@ export default function SupervisorPage() {
               <option value="">
                 {activeRiders.length === 0
                   ? 'Aucun livreur disponible'
-                  : 'Sélectionner un livreur'}
+                  : riderOptions.length === 0
+                    ? 'Aucun livreur trouvé'
+                    : 'Sélectionner un livreur'}
               </option>
-              {activeRiders.map((rider) => (
+              {riderOptions.map((rider) => (
                 <option key={rider._id} value={rider._id}>
                   {rider.canonicalName}
                 </option>

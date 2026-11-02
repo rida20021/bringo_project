@@ -1,28 +1,95 @@
+import { useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import MoneyChain from '@/components/MoneyChain';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatAmount, formatLongDate, formatMAD } from '@/lib/format';
+import { dateInputToTimestamp, todayDateInputValue } from '@/lib/dates';
+
+function readDateParam(searchParams: URLSearchParams): string | null {
+  const value = searchParams.get('date');
+  return value && dateInputToTimestamp(value) !== null ? value : null;
+}
 
 export default function SupervisorDashboard() {
-  const data = useQuery(api.reconciliation.getSupervisorDashboardData, {});
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedDate, setSelectedDate] = useState(
+    () => readDateParam(searchParams) ?? todayDateInputValue()
+  );
+  const reportTimestamp =
+    dateInputToTimestamp(selectedDate) ?? dateInputToTimestamp(todayDateInputValue())!;
+  const isToday = selectedDate === todayDateInputValue();
 
-  if (data === undefined) return <LoadingSpinner />;
+  const data = useQuery(api.reconciliation.getSupervisorDashboardData, {
+    reportDate: reportTimestamp,
+  });
+
+  const updateDate = (value: string) => {
+    if (!value || dateInputToTimestamp(value) === null) return;
+    setSelectedDate(value);
+    const next = new URLSearchParams(searchParams);
+    next.set('date', value);
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    updateDate(event.target.value);
+  };
+
+  const resetToToday = () => {
+    setSelectedDate(todayDateInputValue());
+    const next = new URLSearchParams(searchParams);
+    next.delete('date');
+    setSearchParams(next, { replace: true });
+  };
+
+  const header = (
+    <header className="page-head">
+      <div>
+        <h1>Tableau de bord</h1>
+        <p className="page-sub">
+          {isToday ? 'Aujourd’hui, ' : 'Rapport du '}
+          {formatLongDate(reportTimestamp)} · Africa/Casablanca
+        </p>
+      </div>
+      <div className="page-actions">
+        <label className="date-filter" htmlFor="supervisor-report-date">
+          <span className="date-filter-label">Date du rapport</span>
+          <input
+            id="supervisor-report-date"
+            type="date"
+            value={selectedDate}
+            max={todayDateInputValue()}
+            onChange={handleDateChange}
+          />
+        </label>
+        {!isToday ? (
+          <button type="button" className="button-ghost" onClick={resetToToday}>
+            Aujourd’hui
+          </button>
+        ) : null}
+        <span className="page-tag">Superviseur</span>
+      </div>
+    </header>
+  );
+
+  if (data === undefined) {
+    return (
+      <div className="page">
+        {header}
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   const { kpis, riders: riderRows, pendingDeposits, pendingTpe } = data;
   const hasRiders = riderRows.length > 0;
 
   return (
     <div className="page">
-      <header className="page-head">
-        <div>
-          <h1>Tableau de bord</h1>
-          <p className="page-sub">
-            {formatLongDate(data.reportDate)} · Africa/Casablanca
-          </p>
-        </div>
-        <span className="page-tag">Superviseur</span>
-      </header>
+      {header}
 
       <MoneyChain
         title="Circuit cash"
@@ -113,7 +180,7 @@ export default function SupervisorDashboard() {
         <header className="panel-head">
           <div>
             <h2>Livreurs</h2>
-            <p className="panel-sub">Soldes du jour, cash et carte séparés</p>
+            <p className="panel-sub">Soldes de la date sélectionnée, cash et carte séparés</p>
           </div>
           <span className="panel-count">
             {riderRows.length} {riderRows.length === 1 ? 'livreur' : 'livreurs'}
@@ -157,9 +224,9 @@ export default function SupervisorDashboard() {
           </div>
         ) : (
           <div className="empty">
-            <p className="empty-title">Aucun livreur pour cette journée</p>
+            <p className="empty-title">Aucun livreur pour cette date</p>
             <p className="empty-text">
-              Les soldes apparaîtront après l’import du rapport TIKTAK du jour.
+              Les soldes apparaîtront après l’import du rapport TIKTAK de cette date.
             </p>
           </div>
         )}

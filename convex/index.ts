@@ -13,7 +13,7 @@ export {
 } from './imports';
 export { getOrders, getOrderById, getRiderBalances } from './orders';
 export { createCashCollection, getCashCollections, getCollectionAllocations } from './collections';
-export { createBankDeposit, reviewBankDeposit, getBankDeposits, getDepositAllocations } from './deposits';
+export { createBankDeposit, reviewBankDeposit, getBankDeposits, getDepositAllocations, listPendingBankDeposits } from './deposits';
 export { createTpeReceipt, reviewTpeReceipt, getTpeReceipts, getTpeReceiptAllocations } from './evidence';
 export { getSupervisorDashboardData, getAdminDashboardData } from './reconciliation';
 export {
