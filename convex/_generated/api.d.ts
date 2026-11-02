@@ -12,6 +12,7 @@ import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as collections from "../collections.js";
 import type * as crons from "../crons.js";
+import type * as debt from "../debt.js";
 import type * as deposits from "../deposits.js";
 import type * as discrepancies from "../discrepancies.js";
 import type * as email_import from "../email/import.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   collections: typeof collections;
   crons: typeof crons;
+  debt: typeof debt;
   deposits: typeof deposits;
   discrepancies: typeof discrepancies;
   "email/import": typeof email_import;

@@ -116,10 +116,24 @@ export default function SupervisorPage() {
   const [depositRiderId, setDepositRiderId] = useState('');
   const [riderSearch, setRiderSearch] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
+  const [depositReportDate, setDepositReportDate] = useState(todayDateInputValue());
   const [depositFile, setDepositFile] = useState<File | null>(null);
   const [depositFileKey, setDepositFileKey] = useState(0);
   const [depositFileError, setDepositFileError] = useState<string | null>(null);
   const [depositSubmitting, setDepositSubmitting] = useState(false);
+
+  const depositSourceReportDate = dateInputToTimestamp(depositReportDate);
+  // The server calculates the expectation from cashCollections; the client only
+  // chooses the rider and report day and can never edit the returned amount.
+  const depositExpectation = useQuery(
+    api.deposits.getDepositExpectation,
+    depositRiderId && depositSourceReportDate !== null
+      ? {
+          riderId: depositRiderId as Id<'riders'>,
+          sourceReportDate: depositSourceReportDate,
+        }
+      : 'skip'
+  );
 
   if (riders === undefined) return <LoadingSpinner />;
 
@@ -129,6 +143,7 @@ export default function SupervisorPage() {
     setDepositRiderId('');
     setRiderSearch('');
     setDepositAmount('');
+    setDepositReportDate(todayDateInputValue());
     setDepositFile(null);
     setDepositFileError(null);
     setDepositFileKey((k) => k + 1);
@@ -212,6 +227,12 @@ export default function SupervisorPage() {
       return;
     }
 
+    const sourceReportDate = dateInputToTimestamp(depositReportDate);
+    if (sourceReportDate === null) {
+      toast.error('Sélectionnez une date de rapport valide.');
+      return;
+    }
+
     if (!depositFile) {
       toast.error('Joignez le reçu de dépôt bancaire.');
       return;
@@ -233,6 +254,7 @@ export default function SupervisorPage() {
         riderId: depositRiderId as Id<'riders'>,
         amount: amountCentimes,
         storageId: payload.storageId,
+        sourceReportDate,
       });
 
       toast.success(`Dépôt de ${formatMAD(amountCentimes)} enregistré.`);
@@ -318,6 +340,27 @@ export default function SupervisorPage() {
             searchName="riderSearch"
             selectName="riderId"
           />
+
+          <label className="field">
+            <span className="field-label">Date du rapport</span>
+            <input
+              type="date"
+              name="depositReportDate"
+              value={depositReportDate}
+              onChange={(event) => setDepositReportDate(event.target.value)}
+            />
+          </label>
+
+          <div className="deposit-expectation" aria-live="polite">
+            <span className="deposit-expectation-label">Montant attendu</span>
+            <strong className="amount">
+              {depositExpectation ? formatMAD(depositExpectation.expectedAmount) : '—'}
+            </strong>
+            <span className="field-hint">
+              Calculé par le serveur à partir des encaissements du livreur, moins les
+              dépôts déjà enregistrés pour cette date.
+            </span>
+          </div>
 
           <label className="field">
             <span className="field-label">Montant du dépôt (MAD)</span>

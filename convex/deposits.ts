@@ -1,10 +1,60 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
-import type { DataModel } from './_generated/dataModel';
+import type { DataModel, Id } from './_generated/dataModel';
 import { requireAdmin, requireAppUser, requireSupervisor } from './lib/auth';
+import type { DbCtx } from './lib/auth';
 import { insertAuditEvent } from './audit';
 import { startOfDayCasablanca } from './lib/dates';
+
+interface DepositExpectation {
+  sourceReportDate: number;
+  totalCollected: number;
+  totalDeposited: number;
+  expectedAmount: number;
+}
+
+/**
+ * Cash expected for a rider's report day, calculated server-side so supervisors
+ * cannot edit it. Previous non-rejected deposits for the same rider and day are
+ * deducted so each new deposit is compared against the remaining obligation.
+ */
+async function calculateDepositExpectation(
+  ctx: DbCtx,
+  riderId: Id<'riders'>,
+  reportDate: number
+): Promise<DepositExpectation> {
+  const sourceReportDate = startOfDayCasablanca(reportDate);
+
+  const collections = await ctx.db
+    .query('cashCollections')
+    .withIndex('riderId', (q) => q.eq('riderId', riderId))
+    .collect();
+  const totalCollected = collections
+    .filter(
+      (collection) =>
+        !collection.isReversal && collection.sourceReportDate === sourceReportDate
+    )
+    .reduce((sum, collection) => sum + collection.amount, 0);
+
+  const deposits = await ctx.db
+    .query('bankDeposits')
+    .withIndex('riderId', (q) => q.eq('riderId', riderId))
+    .collect();
+  const totalDeposited = deposits
+    .filter(
+      (deposit) =>
+        deposit.sourceReportDate === sourceReportDate && deposit.status !== 'rejected'
+    )
+    .reduce((sum, deposit) => sum + deposit.amount, 0);
+
+  return {
+    sourceReportDate,
+    totalCollected,
+    totalDeposited,
+    expectedAmount: Math.max(0, totalCollected - totalDeposited),
+  };
+}
 
 /**
  * Supervisor or Admin records cash physically collected from a rider.
@@ -65,19 +115,26 @@ export const createCashCollection = mutation({
 
 /**
  * Supervisor or Admin records a bank deposit tied to a rider.
- * Takes the rider ID, deposit amount in centimes, and a single receipt storage ID.
- * The deposit is inserted with `pending_review` status for admin approval.
+ * Takes the rider ID, deposit amount in centimes, a single receipt storage ID,
+ * and the cash report day the deposit settles. The expected amount is always
+ * calculated server-side from confirmed cash collections; it is never supplied
+ * by the client. The deposit is inserted with `pending_review` status for
+ * admin approval.
  */
 export const createBankDeposit = mutation({
   args: {
     riderId: v.id('riders'),
     amount: v.number(),
     storageId: v.id('_storage'),
+    sourceReportDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const appUser = await requireSupervisor(ctx);
 
     if (args.amount <= 0) throw new Error('Amount must be greater than zero');
+    if (args.sourceReportDate !== undefined && !Number.isFinite(args.sourceReportDate)) {
+      throw new Error('Invalid report date');
+    }
 
     const rider = await ctx.db.get(args.riderId);
     if (!rider) throw new Error('Rider not found');
@@ -85,11 +142,20 @@ export const createBankDeposit = mutation({
     const stored = await ctx.db.system.get('_storage', args.storageId);
     if (!stored) throw new Error('Receipt file not found in storage');
 
+    const sourceReportDate = startOfDayCasablanca(args.sourceReportDate ?? Date.now());
+    const expectation = await calculateDepositExpectation(
+      ctx,
+      args.riderId,
+      sourceReportDate
+    );
+
     const depositId = await ctx.db.insert('bankDeposits', {
       amount: args.amount,
       depositDate: Date.now(),
       depositedBy: appUser.userId,
       riderId: args.riderId,
+      sourceReportDate,
+      expectedAmount: expectation.expectedAmount,
       status: 'pending_review',
       evidenceStorageIds: [args.storageId],
       createdAt: Date.now(),
@@ -100,10 +166,40 @@ export const createBankDeposit = mutation({
       action: 'deposit.created',
       targetType: 'bankDeposits',
       targetId: depositId,
-      afterSummary: { amount: args.amount, riderId: args.riderId, status: 'pending_review' },
+      afterSummary: {
+        amount: args.amount,
+        riderId: args.riderId,
+        sourceReportDate,
+        expectedAmount: expectation.expectedAmount,
+        status: 'pending_review',
+      },
     });
 
     return depositId;
+  },
+});
+
+/**
+ * Server-calculated expectation shown on the Supervisor's deposit form.
+ * The amount is derived from `cashCollections`; the client only supplies the
+ * rider and report day and cannot override the result.
+ */
+export const getDepositExpectation = query({
+  args: {
+    riderId: v.id('riders'),
+    sourceReportDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await requireSupervisor(ctx);
+
+    if (!Number.isFinite(args.sourceReportDate)) {
+      throw new Error('Invalid report date');
+    }
+
+    const rider = await ctx.db.get(args.riderId);
+    if (!rider) throw new Error('Rider not found');
+
+    return calculateDepositExpectation(ctx, args.riderId, args.sourceReportDate);
   },
 });
 
@@ -126,11 +222,52 @@ export const reviewBankDeposit = mutation({
     if (args.action === 'reject' && !reason) throw new Error('A rejection reason is required');
 
     if (args.action === 'approve') {
+      const shortfallAmount =
+        deposit.expectedAmount === undefined
+          ? undefined
+          : Math.max(0, deposit.expectedAmount - deposit.amount);
+
       await ctx.db.patch(args.depositId, {
         status: 'approved',
         reviewedBy: appUser.userId,
         reviewedAt: Date.now(),
+        ...(shortfallAmount === undefined ? {} : { shortfallAmount }),
       });
+
+      if (shortfallAmount !== undefined && shortfallAmount > 0) {
+        const supervisorProfile = await ctx.db
+          .query('userProfiles')
+          .withIndex('userId', (q) => q.eq('userId', deposit.depositedBy))
+          .unique();
+        if (!supervisorProfile) {
+          throw new Error('Depositor profile not found');
+        }
+
+        const previousBalance = supervisorProfile.debtBalance ?? 0;
+        const debtBalance = previousBalance + shortfallAmount;
+
+        await ctx.db.patch(supervisorProfile._id, {
+          debtBalance,
+          updatedAt: Date.now(),
+        });
+
+        await insertAuditEvent(ctx, {
+          actorId: appUser.userId,
+          action: 'supervisor.debt_recorded',
+          targetType: 'users',
+          targetId: deposit.depositedBy,
+          reason: 'Écart de dépôt bancaire',
+          beforeSummary: { debtBalance: previousBalance },
+          afterSummary: {
+            debtBalance,
+            shortfallAmount,
+            expectedAmount: deposit.expectedAmount,
+            depositAmount: deposit.amount,
+            depositId: deposit._id,
+            sourceReportDate: deposit.sourceReportDate,
+          },
+        });
+      }
     } else {
       await ctx.db.patch(args.depositId, {
         status: 'rejected',
@@ -234,6 +371,9 @@ export const listPendingBankDeposits = query({
           depositDate: deposit.depositDate,
           createdAt: deposit.createdAt,
           status: deposit.status,
+          sourceReportDate: deposit.sourceReportDate ?? null,
+          expectedAmount: deposit.expectedAmount ?? null,
+          shortfallAmount: deposit.shortfallAmount ?? null,
           receiptUrl,
           supervisor: {
             userId: deposit.depositedBy,

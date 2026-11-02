@@ -78,6 +78,7 @@ export const listTeamMembers = query({
           role: profile.role,
           isActive: profile.isActive,
           isArchived: profile.isArchived === true,
+          debtBalance: profile.debtBalance ?? 0,
           createdAt: profile.createdAt,
         };
       })
@@ -115,6 +116,7 @@ export const createUser = mutation({
       role: args.role,
       displayName: args.displayName,
       isActive: true,
+      debtBalance: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -360,6 +362,7 @@ export const seedAdmin = mutation({
       role: 'admin',
       displayName: args.displayName ?? appUser.user.name ?? appUser.user.email,
       isActive: true,
+      debtBalance: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

@@ -1344,6 +1344,50 @@ a {
   color: var(--primary);
 }
 
+.rider-loss-row td {
+  padding: 14px 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--primary-soft);
+}
+
+.rider-loss-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.rider-loss-head {
+  grid-column: 1 / -1;
+}
+
+.rider-loss-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.rider-loss-text {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.rider-loss-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+
+.rider-loss-actions .button,
+.rider-loss-actions .button-ghost {
+  height: 36px;
+}
+
 /* ---------- Admin: receipt review queue ---------- */
 
 .review-list {
@@ -1391,6 +1435,10 @@ a {
   margin-top: 3px;
   font-size: 12.5px;
   color: var(--muted);
+}
+
+.review-shortfall {
+  color: var(--red);
 }
 
 .review-actions {
@@ -1663,6 +1711,29 @@ a {
 .rider-form {
   display: grid;
   gap: 16px;
+}
+
+.deposit-expectation {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.deposit-expectation-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.deposit-expectation .amount {
+  font-size: 20px;
+  color: var(--primary);
 }
 
 .method-options {
@@ -1985,6 +2056,10 @@ a {
 
 @media (max-width: 560px) {
   .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rider-loss-form {
     grid-template-columns: 1fr;
   }
 

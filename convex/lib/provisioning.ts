@@ -47,6 +47,7 @@ export async function provisionProfile(
     role: args.role,
     displayName,
     isActive: true,
+    debtBalance: 0,
     createdAt: now,
     updatedAt: now,
   });

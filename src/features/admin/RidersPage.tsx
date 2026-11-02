@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import type { Id } from '@convex/_generated/dataModel';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { formatShortDate } from '@/lib/format';
+import { formatMAD, formatShortDate } from '@/lib/format';
+import { parseAmountToCentimes } from '@/lib/money';
+import { dateInputToTimestamp, todayDateInputValue } from '@/lib/dates';
 import { toast } from 'sonner';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -26,6 +28,7 @@ export default function RidersPage() {
   const updateUserRole = useMutation(api.users.updateUserRole);
   const archiveTeamMember = useMutation(api.users.archiveTeamMember);
   const restoreTeamMember = useMutation(api.users.restoreTeamMember);
+  const recordRiderLoss = useMutation(api.debt.recordRiderLoss);
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -37,6 +40,12 @@ export default function RidersPage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selectedIds, setSelectedIds] = useState<Set<Id<'users'>>>(new Set());
   const [busy, setBusy] = useState(false);
+
+  const [lossUserId, setLossUserId] = useState<Id<'users'> | null>(null);
+  const [lossAmount, setLossAmount] = useState('');
+  const [lossReason, setLossReason] = useState('');
+  const [lossDate, setLossDate] = useState(todayDateInputValue());
+  const [lossPending, setLossPending] = useState(false);
 
   if (members === undefined) return <LoadingSpinner />;
 
@@ -130,6 +139,67 @@ export default function RidersPage() {
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
+    }
+  };
+
+  const closeLossForm = () => {
+    setLossUserId(null);
+    setLossAmount('');
+    setLossReason('');
+    setLossDate(todayDateInputValue());
+  };
+
+  const toggleLossForm = (member: (typeof members)[number]) => {
+    if (lossUserId === member.userId) {
+      closeLossForm();
+      return;
+    }
+    setLossUserId(member.userId);
+    setLossAmount('');
+    setLossReason('');
+    setLossDate(todayDateInputValue());
+  };
+
+  const handleLossSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+    member: (typeof members)[number]
+  ) => {
+    event.preventDefault();
+
+    const amountCentimes = parseAmountToCentimes(lossAmount);
+    if (amountCentimes === null) {
+      toast.error('Saisissez un montant valide supérieur à 0.');
+      return;
+    }
+
+    const reason = lossReason.trim();
+    if (!reason) {
+      toast.error('Indiquez le motif de la perte.');
+      return;
+    }
+
+    const sourceReportDate = dateInputToTimestamp(lossDate);
+    if (sourceReportDate === null) {
+      toast.error('Sélectionnez une date de rapport valide.');
+      return;
+    }
+
+    setLossPending(true);
+    try {
+      await recordRiderLoss({
+        riderUserId: member.userId,
+        amount: amountCentimes,
+        reason,
+        sourceReportDate,
+      });
+      toast.success(
+        `Perte de ${formatMAD(amountCentimes)} enregistrée au nom de ${member.displayName}.`
+      );
+      closeLossForm();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Une erreur est survenue.');
+    } finally {
+      setLossPending(false);
     }
   };
 
@@ -379,6 +449,7 @@ export default function RidersPage() {
                         <th scope="col">Nom</th>
                         <th scope="col">E-mail</th>
                         <th scope="col">Rôle</th>
+                        <th scope="col">Dette</th>
                         <th scope="col">Créé le</th>
                         <th scope="col">État</th>
                         <th scope="col">Actions</th>
@@ -386,88 +457,184 @@ export default function RidersPage() {
                     </thead>
                     <tbody>
                       {displayed.map((member) => (
-                        <tr key={member.userId}>
-                          <td className="table-select">
-                            <input
-                              type="checkbox"
-                              aria-label={`Sélectionner ${member.displayName}`}
-                              checked={selectedIds.has(member.userId)}
-                              disabled={member.isArchived}
-                              onChange={() => toggleSelected(member.userId)}
-                            />
-                          </td>
-                          <td>{member.displayName}</td>
-                          <td className="table-muted">{member.email ?? '—'}</td>
-                          <td>
-                            {member.isArchived ? (
-                              <span
-                                className={`badge ${
-                                  member.role === 'supervisor' ? 'badge-ok' : 'badge-pending'
-                                }`}
-                              >
-                                <span className="badge-dot" aria-hidden="true" />
-                                {roleLabel[member.role] ?? member.role}
-                              </span>
-                            ) : (
-                              <select
-                                aria-label={`Rôle de ${member.displayName}`}
-                                value={member.role}
-                                onChange={(event) =>
-                                  handleRoleChange(member, event.target.value as TeamRole)
-                                }
-                              >
-                                <option value="rider">Livreur</option>
-                                <option value="supervisor">Superviseur</option>
-                              </select>
-                            )}
-                          </td>
-                          <td className="table-muted">{formatShortDate(member.createdAt)}</td>
-                          <td>
-                            {member.isArchived ? (
-                              <span className="badge badge-neutral">
-                                <span className="badge-dot" aria-hidden="true" />
-                                Archivé
-                              </span>
-                            ) : (
-                              <span
-                                className={`badge ${member.isActive ? 'badge-ok' : 'badge-neutral'}`}
-                              >
-                                <span className="badge-dot" aria-hidden="true" />
-                                {member.isActive ? 'Actif' : 'Inactif'}
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <div className="table-actions">
+                        <Fragment key={member.userId}>
+                          <tr>
+                            <td className="table-select">
+                              <input
+                                type="checkbox"
+                                aria-label={`Sélectionner ${member.displayName}`}
+                                checked={selectedIds.has(member.userId)}
+                                disabled={member.isArchived}
+                                onChange={() => toggleSelected(member.userId)}
+                              />
+                            </td>
+                            <td>{member.displayName}</td>
+                            <td className="table-muted">{member.email ?? '—'}</td>
+                            <td>
                               {member.isArchived ? (
-                                <button
-                                  type="button"
-                                  className="button-ghost"
-                                  onClick={() => handleRestore(member)}
+                                <span
+                                  className={`badge ${
+                                    member.role === 'supervisor' ? 'badge-ok' : 'badge-pending'
+                                  }`}
                                 >
-                                  Restaurer
-                                </button>
+                                  <span className="badge-dot" aria-hidden="true" />
+                                  {roleLabel[member.role] ?? member.role}
+                                </span>
                               ) : (
-                                <>
+                                <select
+                                  aria-label={`Rôle de ${member.displayName}`}
+                                  value={member.role}
+                                  onChange={(event) =>
+                                    handleRoleChange(member, event.target.value as TeamRole)
+                                  }
+                                >
+                                  <option value="rider">Livreur</option>
+                                  <option value="supervisor">Superviseur</option>
+                                </select>
+                              )}
+                            </td>
+                            <td
+                              className={`numeric ${
+                                member.debtBalance > 0 ? 'is-due' : 'table-muted'
+                              }`}
+                            >
+                              {member.debtBalance > 0 ? formatMAD(member.debtBalance) : '—'}
+                            </td>
+                            <td className="table-muted">{formatShortDate(member.createdAt)}</td>
+                            <td>
+                              {member.isArchived ? (
+                                <span className="badge badge-neutral">
+                                  <span className="badge-dot" aria-hidden="true" />
+                                  Archivé
+                                </span>
+                              ) : (
+                                <span
+                                  className={`badge ${
+                                    member.isActive ? 'badge-ok' : 'badge-neutral'
+                                  }`}
+                                >
+                                  <span className="badge-dot" aria-hidden="true" />
+                                  {member.isActive ? 'Actif' : 'Inactif'}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <div className="table-actions">
+                                {member.isArchived ? (
                                   <button
                                     type="button"
                                     className="button-ghost"
-                                    onClick={() => handleToggleActive(member)}
+                                    onClick={() => handleRestore(member)}
                                   >
-                                    {member.isActive ? 'Désactiver' : 'Réactiver'}
+                                    Restaurer
                                   </button>
-                                  <button
-                                    type="button"
-                                    className="button-ghost is-danger"
-                                    onClick={() => handleArchive(member)}
-                                  >
-                                    Archiver
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                                ) : (
+                                  <>
+                                    {member.role === 'rider' ? (
+                                      <button
+                                        type="button"
+                                        className="button-ghost"
+                                        aria-expanded={lossUserId === member.userId}
+                                        onClick={() => toggleLossForm(member)}
+                                      >
+                                        Consigner une perte
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      className="button-ghost"
+                                      onClick={() => handleToggleActive(member)}
+                                    >
+                                      {member.isActive ? 'Désactiver' : 'Réactiver'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="button-ghost is-danger"
+                                      onClick={() => handleArchive(member)}
+                                    >
+                                      Archiver
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+
+                          {lossUserId === member.userId ? (
+                            <tr className="rider-loss-row">
+                              <td colSpan={8}>
+                                <form
+                                  className="rider-loss-form"
+                                  onSubmit={(event) => handleLossSubmit(event, member)}
+                                  noValidate
+                                >
+                                  <div className="rider-loss-head">
+                                    <p className="rider-loss-title">
+                                      Consigner une perte — {member.displayName}
+                                    </p>
+                                    <p className="rider-loss-text">
+                                      Le montant sera ajouté à la dette du livreur et
+                                      journalisé dans l’audit.
+                                    </p>
+                                  </div>
+
+                                  <label className="field">
+                                    <span className="field-label">Montant perdu (MAD)</span>
+                                    <input
+                                      type="text"
+                                      name="lossAmount"
+                                      value={lossAmount}
+                                      onChange={(event) => setLossAmount(event.target.value)}
+                                      placeholder="0,00"
+                                      inputMode="decimal"
+                                      autoComplete="off"
+                                    />
+                                  </label>
+
+                                  <label className="field">
+                                    <span className="field-label">Motif</span>
+                                    <input
+                                      type="text"
+                                      name="lossReason"
+                                      value={lossReason}
+                                      onChange={(event) => setLossReason(event.target.value)}
+                                      placeholder="Ex. : espèces perdues"
+                                      autoComplete="off"
+                                    />
+                                  </label>
+
+                                  <label className="field">
+                                    <span className="field-label">Date du rapport</span>
+                                    <input
+                                      type="date"
+                                      name="lossDate"
+                                      value={lossDate}
+                                      onChange={(event) => setLossDate(event.target.value)}
+                                    />
+                                  </label>
+
+                                  <div className="rider-loss-actions">
+                                    <button
+                                      type="submit"
+                                      className="button button-primary"
+                                      disabled={lossPending}
+                                    >
+                                      {lossPending ? 'Enregistrement…' : 'Enregistrer la perte'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="button-ghost"
+                                      disabled={lossPending}
+                                      onClick={closeLossForm}
+                                    >
+                                      Annuler
+                                    </button>
+                                  </div>
+                                </form>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>

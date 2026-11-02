@@ -51,6 +51,7 @@
 - [x] **Task 6.2.3:** Add a "City" dropdown to the creation form and the table.
 - [x] **Task 6.2.4:** Add an "Import Excel/CSV" button to bulk-create 50+ markets.
 - [x] **Task 6.2.5:** Add Pagination ("Charger plus").
+- [ ] **Task 6.2.6: Excel Rider Sync.** Add a button on the Équipe page to view Riders imported from the Excel file who do not yet have Auth accounts. Allow the Admin to create accounts for them to link the `riders` table to `userProfiles`.
 
 ### 6.3 Import Control (Imports Récents)
 - [x] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").
@@ -62,8 +63,8 @@
 
 ### 6.5 Advanced Rider & Financial Edge Cases
 - [ ] **Task 6.5.1:** Build the Admin "Rider 360 View" (dedicated page showing rider stats and password reset).
-- [ ] **Task 6.5.2:** Implement Rider Debt Tracking. Admin can record lost cash as a debt against the Rider.
-- [ ] **Task 6.5.3:** Implement Supervisor Debt Tracking. Approving a short deposit creates a debt against the Supervisor.
+- [x] **Task 6.5.2:** Implement Rider Debt Tracking. Admin can record lost cash as a debt against the Rider.
+- [x] **Task 6.5.3:** Implement Supervisor Debt Tracking. Approving a short deposit creates a debt against the Supervisor.
 - [ ] **Task 6.5.4:** Implement the Midnight Grace Period (00:00 - 03:00 AM counts for previous day).  
 - [x] **Task 6.5.5: Searchable Rider Dropdown.** Replace the native `<select>` in the Supervisor's Bank Deposit form with a searchable dropdown so Supervisors can type a Rider's name instead of scrolling through a massive list.
 - [x] **Task 6.5.6: Supervisor Cash Collection.** Add a form to `SupervisorPage.tsx` so Supervisors can record physical cash collected from a Rider. Update `reconciliation.ts` so this counts towards the "Encaissé" KPI.

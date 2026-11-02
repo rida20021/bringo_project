@@ -101,6 +101,9 @@ export default function PendingDeposits() {
         <ul className="review-list">
           {deposits.map((deposit) => {
             const isPending = pendingId === deposit.depositId;
+            const expectedAmount = deposit.expectedAmount ?? null;
+            const shortfall =
+              expectedAmount === null ? null : Math.max(0, expectedAmount - deposit.amount);
 
             return (
               <li className="review-card" key={deposit.depositId}>
@@ -113,6 +116,20 @@ export default function PendingDeposits() {
                 <p className="review-rider">
                   Superviseur : {deposit.supervisor.displayName}
                 </p>
+                {expectedAmount !== null ? (
+                  <p className="review-meta">
+                    Attendu : <span className="amount">{formatMAD(expectedAmount)}</span>
+                    {' · '}Déposé : <span className="amount">{formatMAD(deposit.amount)}</span>
+                    {shortfall !== null ? (
+                      <>
+                        {' · '}Écart :{' '}
+                        <span className={`amount ${shortfall > 0 ? 'review-shortfall' : ''}`}>
+                          {formatMAD(shortfall)}
+                        </span>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
                 <p className="review-meta">
                   <span className="badge badge-pending">
                     <span className="badge-dot" aria-hidden="true" />
@@ -177,7 +194,11 @@ export default function PendingDeposits() {
                         disabled={pendingId !== null}
                         onClick={() => handleApprove(deposit.depositId)}
                       >
-                        {isPending ? 'Validation…' : 'Approuver'}
+                        {isPending
+                          ? 'Validation…'
+                          : shortfall !== null && shortfall > 0
+                            ? 'Approuver avec écart'
+                            : 'Approuver'}
                       </button>
                       <button
                         type="button"

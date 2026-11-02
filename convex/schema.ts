@@ -32,6 +32,11 @@ export default defineSchema({
      * directory and cannot authenticate, but their financial history is kept.
      */
     isArchived: v.optional(v.boolean()),
+    /**
+     * Outstanding amount owed to the company, in integer centimes. Recorded
+     * when cash is lost or when an approved bank deposit is short.
+     */
+    debtBalance: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('userId', ['userId'])
@@ -225,6 +230,12 @@ export default defineSchema({
     depositDate: v.number(),
     depositedBy: v.id('users'),
     riderId: v.optional(v.id('riders')),
+    /** Casablanca business day the deposited cash belongs to. */
+    sourceReportDate: v.optional(v.number()),
+    /** Server-calculated cash expectation at the time the deposit was created. */
+    expectedAmount: v.optional(v.number()),
+    /** Server-calculated expected minus actual, set when the deposit is approved. */
+    shortfallAmount: v.optional(v.number()),
     status: v.union(
       v.literal('pending_review'),
       v.literal('submitted'),
