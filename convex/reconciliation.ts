@@ -87,8 +87,12 @@ export const getSupervisorDashboardData = query({
       ))
       .collect();
 
+    // `depositDate` records the instant the deposit was registered, not the
+    // start of its business day, so it must be matched with the full Casablanca
+    // day range instead of an equality check.
+    const targetDateEnd = endOfDayCasablanca(targetDate);
     const deposits = await ctx.db.query('bankDeposits')
-      .filter((q) => q.eq(q.field('depositDate'), targetDate))
+      .withIndex('depositDate', (q) => q.gte('depositDate', targetDate).lte('depositDate', targetDateEnd))
       .collect();
 
     const tpeReceipts = await ctx.db.query('tpeReceipts')

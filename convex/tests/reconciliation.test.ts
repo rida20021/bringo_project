@@ -304,6 +304,37 @@ describe('getSupervisorDashboardData', () => {
     expect(data.kpis.totalCollected).toBe(2345);
   });
 
+  it('counts approved deposits registered at any time of the Casablanca day', async () => {
+    const t = makeT();
+    const world = await seedWorld(t);
+
+    await addOrder(t, world, 'DAY-CASH', 5000, DAY_A);
+    await addCollection(t, world, 5000, DAY_A, DAY_A);
+    const dayEnd = endOfDayCasablanca(DAY_A);
+
+    // `depositDate` is the registration instant (Date.now()), not midnight.
+    await addDeposit(t, world, 1285.14, DAY_A + 9 * 60 * 60 * 1000, 'approved');
+    await addDeposit(t, world, 1609.14, dayEnd, 'approved');
+    await addDeposit(t, world, 400, DAY_A + 11 * 60 * 60 * 1000, 'submitted');
+    await addDeposit(t, world, 999, DAY_B + 9 * 60 * 60 * 1000, 'approved');
+
+    const data = await adminClient(t, world).query(
+      api.reconciliation.getSupervisorDashboardData,
+      { reportDate: DAY_A }
+    );
+
+    expect(data.kpis.totalDeposited).toBe(2894.28);
+    expect(data.kpis.totalPendingDeposit).toBe(400);
+    expect(data.kpis.cashAwaitingDeposit).toBe(5000 - 2894.28 - 400);
+
+    // The overview panel must agree with the supervisor KPI.
+    const overview = await adminClient(t, world).query(api.reconciliation.getAdminDashboardData, {
+      fromDate: DAY_A,
+      toDate: DAY_A,
+    });
+    expect(overview.deposits.approved).toBe(2894.28);
+  });
+
   it('resolves a UTC instant near midnight to the Casablanca day', async () => {
     const t = makeT();
     const world = await seedMultiDay(t);
