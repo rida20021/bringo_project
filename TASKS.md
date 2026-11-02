@@ -46,11 +46,11 @@
 - [x] **Task 6.1.5:** Change "Delete" to "Archive" (soft delete) so financial history is preserved.
 
 ### 6.2 Markets Management (Marchés)
-- [ ] **Task 6.2.1:** Add a Search Box (filter by Name or External ID).
-- [ ] **Task 6.2.2:** Add an "Edit" button to fix market names/IDs.
-- [ ] **Task 6.2.3:** Add a "City" dropdown to the creation form and the table.
-- [ ] **Task 6.2.4:** Add an "Import Excel/CSV" button to bulk-create 50+ markets.
-- [ ] **Task 6.2.5:** Add Pagination ("Charger plus").
+- [x] **Task 6.2.1:** Add a Search Box (filter by Name or External ID).
+- [x] **Task 6.2.2:** Add an "Edit" button to fix market names/IDs.
+- [x] **Task 6.2.3:** Add a "City" dropdown to the creation form and the table.
+- [x] **Task 6.2.4:** Add an "Import Excel/CSV" button to bulk-create 50+ markets.
+- [x] **Task 6.2.5:** Add Pagination ("Charger plus").
 
 ### 6.3 Import Control (Imports Récents)
 - [ ] **Task 6.3.1:** Make rows expandable to show Conflict Details (e.g., "Row 5: Duplicate Command").

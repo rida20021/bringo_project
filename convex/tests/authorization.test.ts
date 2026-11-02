@@ -230,15 +230,20 @@ describe('privileged mutations', () => {
 });
 
 describe('role-gated dashboard queries', () => {
-  it('keeps the admin dashboard closed to supervisors', async () => {
+  it('allows supervisors to open the overview dashboard', async () => {
     const t = makeT();
     const supervisorId = await createProfile(t, 'supervisor');
 
-    await expect(
-      t
-        .withIdentity({ subject: supervisorId, email: 'supervisor@bringo.test' })
-        .query(api.reconciliation.getAdminDashboardData, {})
-    ).rejects.toThrow(/Forbidden/);
+    const data = await t
+      .withIdentity({ subject: supervisorId, email: 'supervisor@bringo.test' })
+      .query(api.reconciliation.getAdminDashboardData, {});
+
+    expect(data.totals).toMatchObject({
+      cashDue: 0,
+      cardDue: 0,
+      onlinePaymentExcluded: 0,
+    });
+    expect(data.recentBatches).toHaveLength(0);
   });
 
   it('allows supervisors to open their dashboard', async () => {

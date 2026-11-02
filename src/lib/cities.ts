@@ -1,0 +1,30 @@
+/** Cities available when creating or editing a Bringo market. */
+export const MOROCCAN_CITIES = [
+  'Agadir',
+  'Béni Mellal',
+  'Berrechid',
+  'Bouskoura',
+  'Casablanca',
+  'El Jadida',
+  'Errachidia',
+  'Essaouira',
+  'Fès',
+  'Kénitra',
+  'Khouribga',
+  'Laâyoune',
+  'Marrakech',
+  'Meknès',
+  'Mohammédia',
+  'Nador',
+  'Ouarzazate',
+  'Oujda',
+  'Rabat',
+  'Safi',
+  'Salé',
+  'Settat',
+  'Tanger',
+  'Témara',
+  'Tétouan',
+] as const;
+
+export type MoroccanCity = (typeof MOROCCAN_CITIES)[number];

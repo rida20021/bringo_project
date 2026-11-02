@@ -40,11 +40,13 @@ export default defineSchema({
   markets: defineTable({
     name: v.string(),
     externalId: v.string(),
+    city: v.optional(v.string()),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('externalId', ['externalId'])
-    .index('name', ['name']),
+    .index('name', ['name'])
+    .index('city', ['city']),
 
   liveEntries: defineTable({
     riderUserId: v.id('users'),
