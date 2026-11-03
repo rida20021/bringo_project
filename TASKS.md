@@ -76,7 +76,6 @@
 - [x] **Task 6.5.7: Admin Deposit Approval UI.** Build the Admin panel to review, approve, and reject Supervisor bank deposits.
 - [x] **Task 6.5.8: Fix KPI Range Bug.** Fix the timestamp equality bug in `reconciliation.ts` so approved deposits show up correctly in the dashboard.
 
-## Milestone 6.6: Live Operations & Dashboard Intelligence
 ## Milestone 6.6: Live Operations & Cash Chain of Custody
 - [ ] **Task 6.6.1: Live Mode Dashboard.** Update `reconciliation.ts` so that if no Excel file (`orders`) exists for the selected date, the Dashboard KPIs fall back to calculating totals from `liveEntries` (Live Forecasts). Add a UI badge to distinguish "Live Mode" from "Audit Mode".
 - [ ] **Task 6.6.2: Rider 360 Live Feed.** Ensure the Rider 360 View includes a live feed of the Rider's `liveEntries` and `liveEntryReceipts` for today, so the Admin can track their progress in real-time.

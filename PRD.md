@@ -53,15 +53,13 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Automated bank integrations.
 
 ## 6. Daily Workflow
-1. **Live Entry (Today):** Rider completes a delivery. Opens Bringo web app, inputs Command #, selects Market, inputs Amount, selects Method. Uploads TPE receipt if applicable.
-2. **Cash Collection & Deposit (Today/Next Day):** The Supervisor physically collects cash from the Rider and logs it in the web app. When the Supervisor goes to the bank, they record the deposit and upload the receipt. The Admin reviews and approves it.
-3. **Excel Arrival (Tomorrow Morning):** TikTak sends the Excel file. Admin imports it.
-4. **Reconciliation (Tomorrow):** System matches Rider live entries to the Excel file. 
-   - Match = OK.
-   - Missing in Excel = Flag for Admin (Rider typo?).
-   - Amount mismatch = Flag for Admin.
-5. **Final Audit:** Admin approves all evidence, resolves discrepancies, and reconciles the day.
-
+## 6. Daily Workflow
+1. **Live Entry (Today):** Rider completes a delivery. Opens Bringo web app, inputs Command #, selects Market, inputs Amount, selects Method. Uploads TPE receipt immediately if applicable.
+2. **Excel Arrival (Tomorrow Morning, ~9:00 AM):** TikTak sends the Excel file. Admin imports it. The system calculates the exact cash each Rider owes.
+3. **Rider "Owe" Banner:** The Rider sees a Red banner on their app: "You owe X MAD. Hand cash to your Supervisor." (Riders do NOT upload bank receipts for cash).
+4. **Supervisor Collection:** The Supervisor physically collects the cash from the Rider. Supervisor logs it in the app. Rider's banner turns Yellow. The debt transfers to the Supervisor's "Vault".
+5. **Supervisor Bulk Deposit:** When the Supervisor goes to the bank, they deposit the cash and upload ONE receipt covering multiple Riders. The Admin approves the deposit, clearing the Supervisor's Vault and all linked Riders' banners.
+6. **Reconciliation:** System matches Rider live entries to the Excel file. Missing or mismatched amounts are flagged for Admin review.
 ## 7. Dashboard Requirements
 ### 7.1 Rider Dashboard
 - Simple form to enter Command #, Market, Amount, Method.
@@ -83,6 +81,7 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **Cash Collection Form:** Searchable dropdown to select a Rider and log cash collected.
 - **Bank Deposit Form:** Searchable dropdown to select a Rider and upload a bank deposit receipt.
 - **Live Tracking:** A feed of what Riders are entering live.
+- **Supervisor Vault:** A clear view of the total cash the Supervisor is currently holding, with a rich log of which Riders they collected from, when, and how much.
 
 ## 8. Business Rules & Calculations
 ### 8.1 Payment Methods
