@@ -234,11 +234,28 @@ export default defineSchema({
     isReversal: v.boolean(),
     // Optional so legacy rows (recorded before cash collection statuses) stay valid.
     status: v.optional(v.literal('confirmed')),
+    /**
+     * Chain of custody state:
+     * - `held_by_supervisor`: Cash physically collected by supervisor (in the Vault)
+     * - `deposited_pending`: Included in a bulk bank deposit awaiting admin review
+     * - `cleared`: Bulk deposit approved by admin
+     */
+    cashStatus: v.optional(
+      v.union(
+        v.literal('held_by_supervisor'),
+        v.literal('deposited_pending'),
+        v.literal('cleared')
+      )
+    ),
+    /** Linked bulk bank deposit */
+    linkedDepositId: v.optional(v.id('bankDeposits')),
     createdAt: v.number(),
   }).index('riderId', ['riderId'])
     .index('collectedAt', ['collectedAt'])
     .index('collectedBy', ['collectedBy'])
-    .index('sourceReportDate', ['sourceReportDate']),
+    .index('sourceReportDate', ['sourceReportDate'])
+    .index('by_cashStatus', ['cashStatus'])
+    .index('by_riderId_sourceReportDate', ['riderId', 'sourceReportDate']),
 
   cashCollectionAllocations: defineTable({
     collectionId: v.id('cashCollections'),
@@ -253,6 +270,12 @@ export default defineSchema({
     depositDate: v.number(),
     depositedBy: v.id('users'),
     riderId: v.optional(v.id('riders')),
+    /** Riders covered by a bulk deposit */
+    riderIds: v.optional(v.array(v.id('riders'))),
+    /** Cash collections covered by a bulk deposit */
+    collectionIds: v.optional(v.array(v.id('cashCollections'))),
+    /** True if this deposit covers multiple collections/riders */
+    isBulk: v.optional(v.boolean()),
     /** Casablanca business day the deposited cash belongs to. */
     sourceReportDate: v.optional(v.number()),
     /** Server-calculated cash expectation at the time the deposit was created. */
@@ -273,7 +296,8 @@ export default defineSchema({
   }).index('status', ['status'])
     .index('depositDate', ['depositDate'])
     .index('depositedBy', ['depositedBy'])
-    .index('riderId', ['riderId']),
+    .index('riderId', ['riderId'])
+    .index('by_depositedBy_status', ['depositedBy', 'status']),
 
   depositAllocations: defineTable({
     depositId: v.id('bankDeposits'),

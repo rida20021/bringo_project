@@ -104,17 +104,27 @@ export default function PendingDeposits() {
             const expectedAmount = deposit.expectedAmount ?? null;
             const shortfall =
               expectedAmount === null ? null : Math.max(0, expectedAmount - deposit.amount);
+            const isBulk = deposit.isBulk === true;
 
             return (
               <li className="review-card" key={deposit.depositId}>
                 <div className="review-head">
-                  <span className="review-command">
-                    {deposit.rider?.name ?? 'Livreur inconnu'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className="review-command">
+                      {isBulk
+                        ? `Dépôt groupé (${deposit.collections.length} encaissement(s))`
+                        : (deposit.rider?.name ?? 'Livreur inconnu')}
+                    </span>
+                    {isBulk ? (
+                      <span className="badge badge-ok" style={{ background: '#ede9fe', color: 'var(--primary)' }}>
+                        Chaîne de garde
+                      </span>
+                    ) : null}
+                  </div>
                   <span className="amount">{formatMAD(deposit.amount)}</span>
                 </div>
                 <p className="review-rider">
-                  Superviseur : {deposit.supervisor.displayName}
+                  Superviseur : <strong>{deposit.supervisor.displayName}</strong>
                 </p>
                 {expectedAmount !== null ? (
                   <p className="review-meta">
@@ -138,6 +148,30 @@ export default function PendingDeposits() {
                   · enregistré le {formatDateTime(deposit.depositDate)}
                 </p>
 
+                {/* Chain of custody breakdown for bulk deposits */}
+                {isBulk && deposit.collections.length > 0 ? (
+                  <div className="vault-table-wrapper" style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+                    <table className="chain-of-custody-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Livreur</th>
+                          <th scope="col" className="numeric">Montant</th>
+                          <th scope="col">Date collecte</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deposit.collections.map((col) => (
+                          <tr key={col.collectionId}>
+                            <td><strong>{col.riderName}</strong></td>
+                            <td className="numeric amount">{formatMAD(col.amount)}</td>
+                            <td style={{ fontSize: '0.8125rem' }}>{formatDateTime(col.collectedAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+
                 <div className="review-evidence">
                   {deposit.receiptUrl ? (
                     <a
@@ -146,7 +180,7 @@ export default function PendingDeposits() {
                       rel="noreferrer"
                       className="review-link"
                     >
-                      Voir le reçu
+                      Voir le reçu {isBulk ? 'bancaire unique' : ''}
                     </a>
                   ) : (
                     <span className="review-file">Reçu indisponible</span>
@@ -198,7 +232,9 @@ export default function PendingDeposits() {
                           ? 'Validation…'
                           : shortfall !== null && shortfall > 0
                             ? 'Approuver avec écart'
-                            : 'Approuver'}
+                            : isBulk
+                              ? `Approuver et solder (${deposit.collections.length} livreurs)`
+                              : 'Approuver'}
                       </button>
                       <button
                         type="button"

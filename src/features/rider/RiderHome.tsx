@@ -3,6 +3,7 @@ import { useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@convex/_generated/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import CashStatusBanner from './CashStatusBanner';
 import LiveEntryForm from './LiveEntryForm';
 import MyEntries from './MyEntries';
 
@@ -41,6 +42,8 @@ export default function RiderHome() {
           <p className="rider-eyebrow">Ma journée</p>
           <h1 className="rider-greeting">Bonjour {user?.displayName ?? ''}</h1>
         </div>
+
+        <CashStatusBanner />
 
         <LiveEntryForm />
         <MyEntries />

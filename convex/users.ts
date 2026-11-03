@@ -1,5 +1,6 @@
 import { action, internalQuery, mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
 import {
   createAccount,
   invalidateSessions,
@@ -191,6 +192,92 @@ export const getRiderProfileData = query({
       else stats.cardAmount += entry.amount;
     }
 
+    // Cash chain of custody calculations for this rider
+    const riderId = profile.riderId;
+    let totalCashOrders = 0;
+    const datesWithOrders = new Set<number>();
+    if (riderId) {
+      const orders = await ctx.db
+        .query('orders')
+        .withIndex('riderId', (q) => q.eq('riderId', riderId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field('paymentMethod'), 'cash'),
+            q.eq(q.field('eligibilityStatus'), 'eligible')
+          )
+        )
+        .collect();
+
+      for (const order of orders) {
+        totalCashOrders += order.amount;
+        datesWithOrders.add(order.deliveryDate);
+      }
+    }
+
+    const allLiveEntries = await ctx.db
+      .query('liveEntries')
+      .withIndex('riderUserId', (q) => q.eq('riderUserId', args.riderUserId))
+      .filter((q) => q.eq(q.field('paymentMethod'), 'cash'))
+      .collect();
+
+    let liveCashWithoutOrders = 0;
+    for (const entry of allLiveEntries) {
+      if (!datesWithOrders.has(entry.entryDate)) {
+        liveCashWithoutOrders += entry.amount;
+      }
+    }
+    const totalCashDue = totalCashOrders + liveCashWithoutOrders;
+
+    let totalCollected = 0;
+    let heldBySupervisor = 0;
+    let depositedPending = 0;
+    let clearedAmount = 0;
+    const todayCollectionsEnriched: Array<{
+      collectionId: Id<'cashCollections'>;
+      amount: number;
+      collectedAt: number;
+      supervisorName: string;
+      cashStatus: string;
+    }> = [];
+
+    if (riderId) {
+      const collections = await ctx.db
+        .query('cashCollections')
+        .withIndex('riderId', (q) => q.eq('riderId', riderId))
+        .filter((q) => q.eq(q.field('isReversal'), false))
+        .collect();
+
+      for (const col of collections) {
+        totalCollected += col.amount;
+        if (col.cashStatus === 'held_by_supervisor') heldBySupervisor += col.amount;
+        else if (col.cashStatus === 'deposited_pending') depositedPending += col.amount;
+        else if (col.cashStatus === 'cleared') clearedAmount += col.amount;
+
+        if (col.sourceReportDate === businessDate) {
+          const supervisorUser = await ctx.db.get(col.collectedBy);
+          const supervisorProf = await ctx.db
+            .query('userProfiles')
+            .withIndex('userId', (q) => q.eq('userId', col.collectedBy))
+            .unique();
+          todayCollectionsEnriched.push({
+            collectionId: col._id,
+            amount: col.amount,
+            collectedAt: col.collectedAt,
+            supervisorName: supervisorProf?.displayName ?? supervisorUser?.name ?? 'Superviseur',
+            cashStatus: col.cashStatus ?? 'held_by_supervisor',
+          });
+        }
+      }
+    }
+
+    const cashOwed = Math.max(0, totalCashDue - totalCollected);
+    const obligationStatus: 'red' | 'yellow' | 'green' =
+      cashOwed > 0
+        ? 'red'
+        : heldBySupervisor + depositedPending > 0
+          ? 'yellow'
+          : 'green';
+
     return {
       businessDate,
       profile: {
@@ -203,6 +290,16 @@ export const getRiderProfileData = query({
         isArchived: profile.isArchived === true,
       },
       stats,
+      cashObligation: {
+        totalCashDue,
+        totalCollected,
+        cashOwed,
+        heldBySupervisor,
+        depositedPending,
+        clearedAmount,
+        status: obligationStatus,
+      },
+      todayCollections: todayCollectionsEnriched,
       liveEntries: liveEntries.sort((a, b) => b.createdAt - a.createdAt),
       recentTpeReceipts: recentTpeRows.filter(
         (row): row is NonNullable<typeof row> => row !== null

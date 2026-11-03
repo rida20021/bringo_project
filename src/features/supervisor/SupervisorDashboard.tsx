@@ -48,7 +48,18 @@ export default function SupervisorDashboard() {
   const header = (
     <header className="page-head">
       <div>
-        <h1>Tableau de bord</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <h1>Tableau de bord</h1>
+          {data?.mode === 'live' ? (
+            <span className="mode-badge mode-badge-live">
+              <span aria-hidden="true">📡</span> Mode Live (Prévisions)
+            </span>
+          ) : data?.mode === 'audit' ? (
+            <span className="mode-badge mode-badge-audit">
+              <span aria-hidden="true">✅</span> Mode Audit (TIKTAK)
+            </span>
+          ) : null}
+        </div>
         <p className="page-sub">
           {isToday ? 'Aujourd’hui, ' : 'Rapport du '}
           {formatLongDate(reportTimestamp)} · Africa/Casablanca

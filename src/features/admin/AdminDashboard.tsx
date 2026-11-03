@@ -80,7 +80,18 @@ export default function AdminDashboard() {
   const header = (
     <header className="page-head">
       <div>
-        <h1>Vue d’ensemble</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <h1>Vue d’ensemble</h1>
+          {data?.mode === 'live' ? (
+            <span className="mode-badge mode-badge-live">
+              <span aria-hidden="true">📡</span> Mode Live (Prévisions)
+            </span>
+          ) : data?.mode === 'audit' ? (
+            <span className="mode-badge mode-badge-audit">
+              <span aria-hidden="true">✅</span> Mode Audit (TIKTAK)
+            </span>
+          ) : null}
+        </div>
         <p className="page-sub">
           Du {formatShortDate(fromTimestamp ?? Date.now())} au{' '}
           {formatShortDate(toTimestamp ?? Date.now())} · Africa/Casablanca

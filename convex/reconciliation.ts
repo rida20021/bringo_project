@@ -70,19 +70,35 @@ export const getSupervisorDashboardData = query({
     // the start of its Casablanca calendar day, matching `orders.deliveryDate`.
     const targetDate = startOfDayCasablanca(args.reportDate ?? Date.now());
 
-    const cashOrders = await ctx.db.query('orders')
+    const allOrders = await ctx.db
+      .query('orders')
       .withIndex('deliveryDate', (q) => q.eq('deliveryDate', targetDate))
-      .filter((q) => q.and(q.eq(q.field('paymentMethod'), 'cash'), q.eq(q.field('eligibilityStatus'), 'eligible')))
       .collect();
 
-    const cardOrders = await ctx.db.query('orders')
-      .withIndex('deliveryDate', (q) => q.eq('deliveryDate', targetDate))
-      .filter((q) => q.and(q.eq(q.field('paymentMethod'), 'card'), q.eq(q.field('eligibilityStatus'), 'eligible')))
-      .collect();
+    const isLiveMode = allOrders.length === 0;
+
+    const cashOrders = allOrders.filter(
+      (q) => q.paymentMethod === 'cash' && q.eligibilityStatus === 'eligible'
+    );
+    const cardOrders = allOrders.filter(
+      (q) => q.paymentMethod === 'card' && q.eligibilityStatus === 'eligible'
+    );
+
+    // If no orders exist (live mode), fallback to liveEntries
+    const liveEntries = isLiveMode
+      ? await ctx.db
+          .query('liveEntries')
+          .withIndex('entryDate', (q) => q.eq('entryDate', targetDate))
+          .collect()
+      : [];
+
+    const liveCashEntries = liveEntries.filter((e) => e.paymentMethod === 'cash');
+    const liveTpeEntries = liveEntries.filter((e) => e.paymentMethod === 'tpe');
 
     // Collections belong to the business day they settle (`sourceReportDate`),
     // not the instant they were entered. Reversals never count as collected.
-    const collections = await ctx.db.query('cashCollections')
+    const collections = await ctx.db
+      .query('cashCollections')
       .withIndex('sourceReportDate', (q) => q.eq('sourceReportDate', targetDate))
       .filter((q) => q.eq(q.field('isReversal'), false))
       .collect();
@@ -91,21 +107,32 @@ export const getSupervisorDashboardData = query({
     // start of its business day, so it must be matched with the full Casablanca
     // day range instead of an equality check.
     const targetDateEnd = endOfDayCasablanca(targetDate);
-    const deposits = await ctx.db.query('bankDeposits')
+    const deposits = await ctx.db
+      .query('bankDeposits')
       .withIndex('depositDate', (q) => q.gte('depositDate', targetDate).lte('depositDate', targetDateEnd))
       .collect();
 
-    const tpeReceipts = await ctx.db.query('tpeReceipts')
+    const tpeReceipts = await ctx.db
+      .query('tpeReceipts')
       .filter((q) => q.eq(q.field('receiptDate'), targetDate))
       .collect();
 
-    const cardOrderKeys = new Set(cardOrders.map((order) => normalizeCommandKey(order.commandId)));
+    const cardOrderKeys = isLiveMode
+      ? new Set(liveTpeEntries.map((entry) => normalizeCommandKey(entry.commandId)))
+      : new Set(cardOrders.map((order) => normalizeCommandKey(order.commandId)));
+
     const liveTpe = await loadLiveTpeReceipts(ctx, targetDate, targetDate, cardOrderKeys);
-    const approvedLiveTpe = liveTpe.filter((r) => r.status === 'approved' && r.matchedOrder);
+    const approvedLiveTpe = liveTpe.filter(
+      (r) => r.status === 'approved' && (isLiveMode || r.matchedOrder)
+    );
     const pendingLiveTpe = liveTpe.filter((r) => r.status === 'pending_review');
 
-    const totalCashDue = cashOrders.reduce((sum, o) => sum + o.amount, 0);
-    const totalCardDue = cardOrders.reduce((sum, o) => sum + o.amount, 0);
+    const totalCashDue = isLiveMode
+      ? liveCashEntries.reduce((sum, o) => sum + o.amount, 0)
+      : cashOrders.reduce((sum, o) => sum + o.amount, 0);
+    const totalCardDue = isLiveMode
+      ? liveTpeEntries.reduce((sum, o) => sum + o.amount, 0)
+      : cardOrders.reduce((sum, o) => sum + o.amount, 0);
 
     const totalCollected = collections.reduce((sum, c) => sum + c.amount, 0);
     const totalDeposited = deposits
@@ -129,27 +156,112 @@ export const getSupervisorDashboardData = query({
         .reduce((sum, r) => sum + r.claimedAmount, 0) +
       pendingLiveTpe.reduce((sum, r) => sum + r.amount, 0);
 
-    const riderMap = new Map<string, { riderId: string; name: string; cashDue: number; cardDue: number; collected: number; remaining: number }>();
-    for (const order of cashOrders) {
-      if (!riderMap.has(order.riderId)) riderMap.set(order.riderId, { riderId: order.riderId, name: order.rawRiderName, cashDue: 0, cardDue: 0, collected: 0, remaining: 0 });
-      const r = riderMap.get(order.riderId)!;
-      r.cashDue += order.amount;
+    const riderMap = new Map<
+      string,
+      {
+        riderId: string;
+        name: string;
+        cashDue: number;
+        cardDue: number;
+        collected: number;
+        remaining: number;
+      }
+    >();
+
+    if (isLiveMode) {
+      // In live mode, group by rider user profile / linked riderId
+      const riderUserIds = Array.from(new Set(liveEntries.map((e) => e.riderUserId)));
+      const profiles = await Promise.all(
+        riderUserIds.map(async (uid) => {
+          const profile = await ctx.db
+            .query('userProfiles')
+            .withIndex('userId', (q) => q.eq('userId', uid))
+            .unique();
+          return { userId: uid, profile };
+        })
+      );
+      const userToProfile = new Map(profiles.map((p) => [p.userId, p.profile]));
+      const riderIdToKey = new Map<string, string>();
+
+      for (const entry of liveEntries) {
+        const profile = userToProfile.get(entry.riderUserId);
+        const key = profile?.riderId ?? entry.riderUserId;
+        if (profile?.riderId) riderIdToKey.set(profile.riderId, key);
+
+        if (!riderMap.has(key)) {
+          riderMap.set(key, {
+            riderId: key,
+            name: profile?.displayName ?? 'Livreur',
+            cashDue: 0,
+            cardDue: 0,
+            collected: 0,
+            remaining: 0,
+          });
+        }
+        const r = riderMap.get(key)!;
+        if (entry.paymentMethod === 'cash') r.cashDue += entry.amount;
+        else if (entry.paymentMethod === 'tpe') r.cardDue += entry.amount;
+      }
+
+      for (const col of collections) {
+        const key = riderIdToKey.get(col.riderId) ?? col.riderId;
+        let r = riderMap.get(key);
+        if (!r) {
+          const riderDoc = await ctx.db.get(col.riderId);
+          r = {
+            riderId: col.riderId,
+            name: riderDoc?.canonicalName ?? 'Livreur',
+            cashDue: 0,
+            cardDue: 0,
+            collected: 0,
+            remaining: 0,
+          };
+          riderMap.set(key, r);
+        }
+        r.collected += col.amount;
+      }
+    } else {
+      for (const order of cashOrders) {
+        if (!riderMap.has(order.riderId)) {
+          riderMap.set(order.riderId, {
+            riderId: order.riderId,
+            name: order.rawRiderName,
+            cashDue: 0,
+            cardDue: 0,
+            collected: 0,
+            remaining: 0,
+          });
+        }
+        const r = riderMap.get(order.riderId)!;
+        r.cashDue += order.amount;
+      }
+      for (const order of cardOrders) {
+        if (!riderMap.has(order.riderId)) {
+          riderMap.set(order.riderId, {
+            riderId: order.riderId,
+            name: order.rawRiderName,
+            cashDue: 0,
+            cardDue: 0,
+            collected: 0,
+            remaining: 0,
+          });
+        }
+        const r = riderMap.get(order.riderId)!;
+        r.cardDue += order.amount;
+      }
+      for (const col of collections) {
+        const r = riderMap.get(col.riderId);
+        if (r) r.collected += col.amount;
+      }
     }
-    for (const order of cardOrders) {
-      if (!riderMap.has(order.riderId)) riderMap.set(order.riderId, { riderId: order.riderId, name: order.rawRiderName, cashDue: 0, cardDue: 0, collected: 0, remaining: 0 });
-      const r = riderMap.get(order.riderId)!;
-      r.cardDue += order.amount;
-    }
-    for (const col of collections) {
-      const r = riderMap.get(col.riderId);
-      if (r) r.collected += col.amount;
-    }
+
     for (const [, r] of riderMap) {
       r.remaining = r.cashDue - r.collected;
     }
 
     return {
       reportDate: targetDate,
+      mode: isLiveMode ? ('live' as const) : ('audit' as const),
       kpis: {
         totalCashDue,
         totalCardDue,
@@ -200,6 +312,8 @@ export const getAdminDashboardData = query({
       .filter((q) => q.and(q.gte(q.field('deliveryDate'), from), q.lte(q.field('deliveryDate'), to)))
       .collect();
 
+    const isLiveMode = orders.length === 0;
+
     // Collections belong to the business day they settle, not the moment they
     // were entered, so both dashboards agree on the same report date.
     const collections = await ctx.db.query('cashCollections')
@@ -217,9 +331,46 @@ export const getAdminDashboardData = query({
     const cashOrders = orders.filter((o) => o.paymentMethod === 'cash' && o.eligibilityStatus === 'eligible');
     const cardOrders = orders.filter((o) => o.paymentMethod === 'card' && o.eligibilityStatus === 'eligible');
 
-    const cardOrderKeys = new Set(cardOrders.map((order) => normalizeCommandKey(order.commandId)));
+    // In live mode, query liveEntries for the range
+    const liveEntries = isLiveMode
+      ? await ctx.db
+          .query('liveEntries')
+          .filter((q) => q.and(q.gte(q.field('entryDate'), from), q.lte(q.field('entryDate'), to)))
+          .collect()
+      : [];
+
+    const cashDue = isLiveMode
+      ? liveEntries
+          .filter((e) => e.paymentMethod === 'cash')
+          .reduce((s, e) => s + e.amount, 0)
+      : cashOrders.reduce((s, o) => s + o.amount, 0);
+
+    const cardDue = isLiveMode
+      ? liveEntries
+          .filter((e) => e.paymentMethod === 'tpe')
+          .reduce((s, e) => s + e.amount, 0)
+      : cardOrders.reduce((s, o) => s + o.amount, 0);
+
+    const onlinePaymentExcluded = isLiveMode
+      ? liveEntries
+          .filter((e) => e.paymentMethod === 'card')
+          .reduce((s, e) => s + e.amount, 0)
+      : orders
+          .filter((o) => o.paymentMethod === 'online_payment')
+          .reduce((s, o) => s + o.amount, 0);
+
+    const cardOrderKeys = isLiveMode
+      ? new Set(
+          liveEntries
+            .filter((e) => e.paymentMethod === 'tpe')
+            .map((e) => normalizeCommandKey(e.commandId))
+        )
+      : new Set(cardOrders.map((order) => normalizeCommandKey(order.commandId)));
+
     const liveTpe = await loadLiveTpeReceipts(ctx, from, to, cardOrderKeys);
-    const approvedLiveTpe = liveTpe.filter((r) => r.status === 'approved' && r.matchedOrder);
+    const approvedLiveTpe = liveTpe.filter(
+      (r) => r.status === 'approved' && (isLiveMode || r.matchedOrder)
+    );
     const pendingLiveTpe = liveTpe.filter((r) => r.status === 'pending_review');
     const rejectedLiveTpe = liveTpe.filter((r) => r.status === 'rejected');
 
@@ -235,6 +386,7 @@ export const getAdminDashboardData = query({
 
     return {
       dateRange: { from, to },
+      mode: isLiveMode ? ('live' as const) : ('audit' as const),
       imports: {
         totalBatches: batches.length,
         totalRows: batches.reduce((s, b) => s + b.totalRows, 0),
@@ -244,9 +396,9 @@ export const getAdminDashboardData = query({
         conflictRows: batches.reduce((s, b) => s + b.conflictRows, 0),
       },
       totals: {
-        cashDue: cashOrders.reduce((s, o) => s + o.amount, 0),
-        cardDue: cardOrders.reduce((s, o) => s + o.amount, 0),
-        onlinePaymentExcluded: orders.filter((o) => o.paymentMethod === 'online_payment').reduce((s, o) => s + o.amount, 0),
+        cashDue,
+        cardDue,
+        onlinePaymentExcluded,
       },
       collections: {
         total: collections.reduce((s, c) => s + c.amount, 0),

@@ -2,10 +2,10 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel, Id } from './_generated/dataModel';
-import { requireAdmin, requireAppUser, requireSupervisor } from './lib/auth';
+import { requireAdmin, requireAppUser, requireRider, requireSupervisor } from './lib/auth';
 import type { DbCtx } from './lib/auth';
 import { insertAuditEvent } from './audit';
-import { startOfDayCasablanca } from './lib/dates';
+import { liveEntryDateCasablanca, startOfDayCasablanca } from './lib/dates';
 
 interface DepositExpectation {
   sourceReportDate: number;
@@ -65,7 +65,7 @@ export const createCashCollection = mutation({
   args: {
     riderId: v.id('riders'),
     amount: v.number(),
-    sourceReportDate: v.number(),
+    sourceReportDate: v.optional(v.number()),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -74,15 +74,18 @@ export const createCashCollection = mutation({
     if (!Number.isSafeInteger(args.amount) || args.amount <= 0) {
       throw new Error('Amount must be a positive integer number of centimes');
     }
-    if (!Number.isFinite(args.sourceReportDate)) {
+    if (args.sourceReportDate !== undefined && !Number.isFinite(args.sourceReportDate)) {
       throw new Error('Invalid report date');
     }
 
     const rider = await ctx.db.get(args.riderId);
     if (!rider) throw new Error('Rider not found');
 
-    const sourceReportDate = startOfDayCasablanca(args.sourceReportDate);
     const now = Date.now();
+    const sourceReportDate =
+      args.sourceReportDate !== undefined
+        ? startOfDayCasablanca(args.sourceReportDate)
+        : liveEntryDateCasablanca(now);
 
     const collectionId = await ctx.db.insert('cashCollections', {
       riderId: args.riderId,
@@ -93,6 +96,7 @@ export const createCashCollection = mutation({
       sourceReportDate,
       isReversal: false,
       status: 'confirmed',
+      cashStatus: 'held_by_supervisor',
       createdAt: now,
     });
 
@@ -106,6 +110,7 @@ export const createCashCollection = mutation({
         riderId: args.riderId,
         sourceReportDate,
         status: 'confirmed',
+        cashStatus: 'held_by_supervisor',
       },
     });
 
@@ -234,6 +239,16 @@ export const reviewBankDeposit = mutation({
         ...(shortfallAmount === undefined ? {} : { shortfallAmount }),
       });
 
+      // Clear all collections covered by this bulk deposit
+      if (deposit.collectionIds && deposit.collectionIds.length > 0) {
+        for (const colId of deposit.collectionIds) {
+          const col = await ctx.db.get(colId);
+          if (col) {
+            await ctx.db.patch(colId, { cashStatus: 'cleared' });
+          }
+        }
+      }
+
       if (shortfallAmount !== undefined && shortfallAmount > 0) {
         const supervisorProfile = await ctx.db
           .query('userProfiles')
@@ -275,6 +290,19 @@ export const reviewBankDeposit = mutation({
         reviewedAt: Date.now(),
         rejectionReason: reason,
       });
+
+      // Revert collections back to held_by_supervisor for bulk deposit
+      if (deposit.collectionIds && deposit.collectionIds.length > 0) {
+        for (const colId of deposit.collectionIds) {
+          const col = await ctx.db.get(colId);
+          if (col) {
+            await ctx.db.patch(colId, {
+              cashStatus: 'held_by_supervisor',
+              linkedDepositId: undefined,
+            });
+          }
+        }
+      }
     }
   },
 });
@@ -365,6 +393,26 @@ export const listPendingBankDeposits = query({
             ? await ctx.storage.getUrl(deposit.evidenceStorageIds[0])
             : null;
 
+        const isBulk = deposit.isBulk === true;
+        const collections = deposit.collectionIds
+          ? (
+              await Promise.all(
+                deposit.collectionIds.map(async (cid) => {
+                  const c = await ctx.db.get(cid);
+                  if (!c) return null;
+                  const r = await ctx.db.get(c.riderId);
+                  return {
+                    collectionId: c._id,
+                    riderId: c.riderId,
+                    riderName: r?.canonicalName ?? 'Livreur inconnu',
+                    amount: c.amount,
+                    collectedAt: c.collectedAt,
+                  };
+                })
+              )
+            ).filter((c): c is NonNullable<typeof c> => c !== null)
+          : [];
+
         return {
           depositId: deposit._id,
           amount: deposit.amount,
@@ -374,7 +422,9 @@ export const listPendingBankDeposits = query({
           sourceReportDate: deposit.sourceReportDate ?? null,
           expectedAmount: deposit.expectedAmount ?? null,
           shortfallAmount: deposit.shortfallAmount ?? null,
+          isBulk,
           receiptUrl,
+          collections,
           supervisor: {
             userId: deposit.depositedBy,
             displayName:
@@ -390,6 +440,322 @@ export const listPendingBankDeposits = query({
     );
 
     return rows.sort((a, b) => b.depositDate - a.depositDate).slice(0, limit);
+  },
+});
+
+/**
+ * Supervisor records a single bulk bank deposit covering multiple cash collections.
+ * Takes the total deposit amount, a single receipt storage ID, and the list of
+ * collection IDs covered by this deposit.
+ * Transitions all collections from 'held_by_supervisor' to 'deposited_pending'.
+ */
+export const createBulkBankDeposit = mutation({
+  args: {
+    amount: v.number(),
+    storageId: v.id('_storage'),
+    collectionIds: v.array(v.id('cashCollections')),
+    bankReference: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireSupervisor(ctx);
+
+    if (!Number.isSafeInteger(args.amount) || args.amount <= 0) {
+      throw new Error('Le montant du dépôt doit être supérieur à 0');
+    }
+
+    const uniqueCollectionIds = Array.from(new Set(args.collectionIds));
+    if (uniqueCollectionIds.length === 0) {
+      throw new Error('Sélectionnez au moins un encaissement');
+    }
+
+    const stored = await ctx.db.system.get('_storage', args.storageId);
+    if (!stored) throw new Error('Receipt file not found in storage');
+
+    // Fetch and validate each collection
+    const collections = await Promise.all(
+      uniqueCollectionIds.map(async (id) => {
+        const col = await ctx.db.get(id);
+        if (!col) throw new Error(`Encaissement introuvable`);
+        if (col.isReversal) throw new Error('Impossible d’inclure une annulation dans un dépôt');
+        if (col.cashStatus && col.cashStatus !== 'held_by_supervisor') {
+          throw new Error('Certains encaissements sélectionnés ne sont plus disponibles en caisse');
+        }
+        return col;
+      })
+    );
+
+    const expectedAmount = collections.reduce((sum, c) => sum + c.amount, 0);
+    const riderIds = Array.from(new Set(collections.map((c) => c.riderId)));
+    const now = Date.now();
+
+    const depositId = await ctx.db.insert('bankDeposits', {
+      amount: args.amount,
+      depositDate: now,
+      depositedBy: appUser.userId,
+      riderId: riderIds.length === 1 ? riderIds[0] : undefined,
+      riderIds,
+      collectionIds: uniqueCollectionIds,
+      isBulk: true,
+      expectedAmount,
+      bankReference: args.bankReference?.trim() || undefined,
+      status: 'pending_review',
+      evidenceStorageIds: [args.storageId],
+      createdAt: now,
+    });
+
+    for (const col of collections) {
+      await ctx.db.patch(col._id, {
+        cashStatus: 'deposited_pending',
+        linkedDepositId: depositId,
+      });
+    }
+
+    await insertAuditEvent(ctx, {
+      actorId: appUser.userId,
+      action: 'supervisor.bulk_deposit_created',
+      targetType: 'bankDeposits',
+      targetId: depositId,
+      afterSummary: {
+        amount: args.amount,
+        expectedAmount,
+        collectionCount: collections.length,
+        riderCount: riderIds.length,
+        isBulk: true,
+      },
+    });
+
+    return depositId;
+  },
+});
+
+/**
+ * Returns the Supervisor's physical Vault: all collections currently held by
+ * this supervisor (`held_by_supervisor`) and any pending bank deposits
+ * (`deposited_pending`).
+ */
+export const getSupervisorVault = query({
+  args: {},
+  handler: async (ctx) => {
+    const appUser = await requireSupervisor(ctx);
+
+    const allCollections = await ctx.db
+      .query('cashCollections')
+      .withIndex('collectedBy', (q) => q.eq('collectedBy', appUser.userId))
+      .collect();
+
+    const activeCollections = allCollections.filter(
+      (c) =>
+        !c.isReversal &&
+        (c.cashStatus === 'held_by_supervisor' ||
+          c.cashStatus === 'deposited_pending' ||
+          (c.cashStatus === undefined && c.status === 'confirmed'))
+    );
+
+    const enriched = await Promise.all(
+      activeCollections.map(async (c) => {
+        const rider = await ctx.db.get(c.riderId);
+        return {
+          collectionId: c._id,
+          riderId: c.riderId,
+          riderName: rider?.canonicalName ?? 'Livreur inconnu',
+          amount: c.amount,
+          collectedAt: c.collectedAt,
+          sourceReportDate: c.sourceReportDate,
+          cashStatus: (c.cashStatus ?? 'held_by_supervisor') as
+            | 'held_by_supervisor'
+            | 'deposited_pending'
+            | 'cleared',
+          linkedDepositId: c.linkedDepositId ?? null,
+          note: c.note ?? null,
+        };
+      })
+    );
+
+    const heldCollections = enriched.filter((c) => c.cashStatus === 'held_by_supervisor');
+    const pendingCollections = enriched.filter((c) => c.cashStatus === 'deposited_pending');
+
+    const totalHeld = heldCollections.reduce((sum, c) => sum + c.amount, 0);
+    const totalPending = pendingCollections.reduce((sum, c) => sum + c.amount, 0);
+
+    return {
+      totalHeld,
+      totalPending,
+      heldCollections: heldCollections.sort((a, b) => b.collectedAt - a.collectedAt),
+      pendingCollections: pendingCollections.sort((a, b) => b.collectedAt - a.collectedAt),
+      allVaultItems: enriched.sort((a, b) => b.collectedAt - a.collectedAt),
+    };
+  },
+});
+
+/**
+ * Dynamic cash obligation status for the current logged-in rider.
+ * Computes:
+ * - Red banner: Rider owes physical cash to company (orders/live entries > collections)
+ * - Yellow banner: Cash handed to supervisor, awaiting bank deposit or admin approval
+ * - Green / Hidden: Fully cleared
+ */
+export const getRiderCashStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const appUser = await requireRider(ctx);
+    const profile = appUser.profile;
+    if (!profile) return null;
+
+    const riderId = profile.riderId;
+
+    // 1. Calculate total cash due from orders if riderId exists
+    let totalCashOrders = 0;
+    const datesWithOrders = new Set<number>();
+
+    if (riderId) {
+      const orders = await ctx.db
+        .query('orders')
+        .withIndex('riderId', (q) => q.eq('riderId', riderId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field('paymentMethod'), 'cash'),
+            q.eq(q.field('eligibilityStatus'), 'eligible')
+          )
+        )
+        .collect();
+
+      for (const order of orders) {
+        totalCashOrders += order.amount;
+        datesWithOrders.add(order.deliveryDate);
+      }
+    }
+
+    // 2. Add cash from liveEntries for days that do NOT have orders imported yet (e.g. today)
+    const liveEntries = await ctx.db
+      .query('liveEntries')
+      .withIndex('riderUserId', (q) => q.eq('riderUserId', appUser.userId))
+      .filter((q) => q.eq(q.field('paymentMethod'), 'cash'))
+      .collect();
+
+    let liveCashWithoutOrders = 0;
+    for (const entry of liveEntries) {
+      if (!datesWithOrders.has(entry.entryDate)) {
+        liveCashWithoutOrders += entry.amount;
+      }
+    }
+
+    const totalCashDue = totalCashOrders + liveCashWithoutOrders;
+
+    // 3. Calculate collections for this rider
+    let totalCollected = 0;
+    let pendingSupervisorCash = 0;
+    let pendingBankCash = 0;
+
+    if (riderId) {
+      const collections = await ctx.db
+        .query('cashCollections')
+        .withIndex('riderId', (q) => q.eq('riderId', riderId))
+        .filter((q) => q.eq(q.field('isReversal'), false))
+        .collect();
+
+      for (const col of collections) {
+        totalCollected += col.amount;
+        if (col.cashStatus === 'held_by_supervisor') {
+          pendingSupervisorCash += col.amount;
+        } else if (col.cashStatus === 'deposited_pending') {
+          pendingBankCash += col.amount;
+        }
+      }
+    }
+
+    const cashOwed = Math.max(0, totalCashDue - totalCollected);
+    const totalPending = pendingSupervisorCash + pendingBankCash;
+
+    if (cashOwed > 0) {
+      return {
+        status: 'red' as const,
+        amount: cashOwed,
+        message: 'Vous devez remettre l’espèce à votre superviseur.',
+        cashDue: totalCashDue,
+        collected: totalCollected,
+      };
+    }
+
+    if (totalPending > 0) {
+      const message =
+        pendingBankCash > 0
+          ? 'Remis au superviseur · Dépôt bancaire en cours de validation.'
+          : 'Remis au superviseur · En attente du dépôt bancaire.';
+      return {
+        status: 'yellow' as const,
+        amount: totalPending,
+        message,
+        cashDue: totalCashDue,
+        collected: totalCollected,
+      };
+    }
+
+    return {
+      status: 'green' as const,
+      amount: 0,
+      message: 'Situation soldée.',
+      cashDue: totalCashDue,
+      collected: totalCollected,
+    };
+  },
+});
+
+/** Detailed view of a bulk deposit for admin review modal / audit */
+export const getBulkDepositDetails = query({
+  args: { depositId: v.id('bankDeposits') },
+  handler: async (ctx, args) => {
+    await requireSupervisor(ctx);
+
+    const deposit = await ctx.db.get(args.depositId);
+    if (!deposit) throw new Error('Deposit not found');
+
+    const supervisor = await ctx.db.get(deposit.depositedBy);
+    const supervisorProfile = await ctx.db
+      .query('userProfiles')
+      .withIndex('userId', (q) => q.eq('userId', deposit.depositedBy))
+      .unique();
+
+    const collections = deposit.collectionIds
+      ? (
+          await Promise.all(
+            deposit.collectionIds.map(async (cid) => {
+              const c = await ctx.db.get(cid);
+              if (!c) return null;
+              const r = await ctx.db.get(c.riderId);
+              return {
+                collectionId: c._id,
+                riderId: c.riderId,
+                riderName: r?.canonicalName ?? 'Livreur inconnu',
+                amount: c.amount,
+                collectedAt: c.collectedAt,
+                cashStatus: c.cashStatus,
+              };
+            })
+          )
+        ).filter((c): c is NonNullable<typeof c> => c !== null)
+      : [];
+
+    const receiptUrl =
+      deposit.evidenceStorageIds.length > 0
+        ? await ctx.storage.getUrl(deposit.evidenceStorageIds[0])
+        : null;
+
+    return {
+      deposit: {
+        _id: deposit._id,
+        amount: deposit.amount,
+        expectedAmount: deposit.expectedAmount,
+        shortfallAmount: deposit.shortfallAmount,
+        status: deposit.status,
+        depositDate: deposit.depositDate,
+        bankReference: deposit.bankReference,
+        isBulk: deposit.isBulk === true,
+        receiptUrl,
+        supervisorName:
+          supervisorProfile?.displayName ?? supervisor?.name ?? supervisor?.email ?? 'Superviseur',
+      },
+      collections,
+    };
   },
 });
 

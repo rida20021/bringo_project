@@ -209,10 +209,98 @@ export default function RiderDetailPage() {
         </div>
       </section>
 
+      {/* Task 6.6.2: Cash Chain of Custody & Live Feed */}
+      <section className="panel" aria-labelledby="cash-chain-title">
+        <header className="panel-head">
+          <div>
+            <h2 id="cash-chain-title">Chaîne de garde des espèces</h2>
+            <p className="panel-sub">
+              Circuit de transmission du cash : Livreur → Superviseur (Coffre) → Banque → Validation.
+            </p>
+          </div>
+          {data.cashObligation.status === 'red' ? (
+            <span className="badge badge-pending" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #f87171' }}>
+              🔴 Doit {formatMAD(data.cashObligation.cashOwed)}
+            </span>
+          ) : data.cashObligation.status === 'yellow' ? (
+            <span className="badge badge-pending" style={{ background: '#fefce8', color: '#854d0e', border: '1px solid #facc15' }}>
+              🟡 En cours ({formatMAD(data.cashObligation.heldBySupervisor + data.cashObligation.depositedPending)})
+            </span>
+          ) : (
+            <span className="badge badge-ok">
+              🟢 Soldé
+            </span>
+          )}
+        </header>
+
+        <div className="vault-summary-grid">
+          <div className="vault-stat-card">
+            <span className="vault-stat-label">Total espèces dues</span>
+            <span className="vault-stat-value amount">{formatMAD(data.cashObligation.totalCashDue)}</span>
+            <span className="field-hint">Commandes et saisies cash</span>
+          </div>
+          <div className="vault-stat-card">
+            <span className="vault-stat-label">Encaissé par superviseur</span>
+            <span className="vault-stat-value amount">{formatMAD(data.cashObligation.totalCollected)}</span>
+            <span className="field-hint">Remis physiquement au superviseur</span>
+          </div>
+          <div className="vault-stat-card">
+            <span className="vault-stat-label">En coffre superviseur</span>
+            <span className="vault-stat-value amount">{formatMAD(data.cashObligation.heldBySupervisor)}</span>
+            <span className="field-hint">En attente de dépôt bancaire</span>
+          </div>
+          <div className="vault-stat-card">
+            <span className="vault-stat-label">Déposé et soldé</span>
+            <span className="vault-stat-value amount">{formatMAD(data.cashObligation.clearedAmount)}</span>
+            <span className="field-hint">Validé par l’administration</span>
+          </div>
+        </div>
+
+        {data.todayCollections.length > 0 ? (
+          <div className="vault-table-wrapper" style={{ marginTop: '1rem' }}>
+            <table className="chain-of-custody-table">
+              <thead>
+                <tr>
+                  <th scope="col">Superviseur ayant encaissé</th>
+                  <th scope="col" className="numeric">Montant</th>
+                  <th scope="col">Date de remise</th>
+                  <th scope="col">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.todayCollections.map((col) => (
+                  <tr key={col.collectionId}>
+                    <td><strong>{col.supervisorName}</strong></td>
+                    <td className="numeric amount">{formatMAD(col.amount)}</td>
+                    <td style={{ fontSize: '0.8125rem' }}>{formatDateTime(col.collectedAt)}</td>
+                    <td>
+                      {col.cashStatus === 'held_by_supervisor' ? (
+                        <span className="badge badge-pending">En coffre</span>
+                      ) : col.cashStatus === 'deposited_pending' ? (
+                        <span className="badge badge-pending" style={{ background: '#fef3c7', color: '#92400e' }}>
+                          Dépôt en validation
+                        </span>
+                      ) : (
+                        <span className="badge badge-ok">Soldé</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </section>
+
       <section className="panel">
         <header className="panel-head">
           <div>
-            <h2>Entrées de la journée</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2>Entrées de la journée</h2>
+              <span className="mode-badge mode-badge-live">
+                <span aria-hidden="true">📡</span> Flux direct
+              </span>
+            </div>
             <p className="panel-sub">Commandes saisies en direct par ce livreur.</p>
           </div>
           <span className="panel-count">{data.liveEntries.length} entrée(s)</span>
