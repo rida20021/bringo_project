@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from 'convex/react';
@@ -32,6 +32,8 @@ function initialRange(searchParams: URLSearchParams): { from: string; to: string
 export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [range, setRange] = useState(() => initialRange(searchParams));
+  const [riderSearch, setRiderSearch] = useState('');
+  const [remainingSort, setRemainingSort] = useState<'desc' | 'asc'>('desc');
 
   const fromTimestamp = dateInputToTimestamp(range.from);
   const toTimestamp = dateInputToTimestamp(range.to);
@@ -40,6 +42,22 @@ export default function AdminDashboard() {
     fromDate: fromTimestamp ?? undefined,
     toDate: toTimestamp ?? undefined,
   });
+
+  const filteredAndSortedRiders = useMemo(() => {
+    if (!data?.riders) return [];
+    const riders = data.riders;
+    const query = riderSearch.trim().toLowerCase();
+    const filtered = query
+      ? riders.filter((rider) => rider.name.toLowerCase().includes(query))
+      : riders;
+
+    return [...filtered].sort((a, b) => {
+      const diff =
+        remainingSort === 'desc' ? b.remaining - a.remaining : a.remaining - b.remaining;
+      if (diff !== 0) return diff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [data?.riders, riderSearch, remainingSort]);
 
   const persistRange = (next: { from: string; to: string }) => {
     const params = new URLSearchParams(searchParams);
@@ -238,6 +256,96 @@ export default function AdminDashboard() {
           </dl>
         </section>
       </div>
+
+      <section className="panel">
+        <header className="panel-head">
+          <div>
+            <h2>Livreurs</h2>
+            <p className="panel-sub">Soldes de la période sélectionnée, cash et carte séparés</p>
+          </div>
+          <span className="panel-count">
+            {filteredAndSortedRiders.length}{' '}
+            {filteredAndSortedRiders.length === 1 ? 'livreur' : 'livreurs'}
+          </span>
+        </header>
+
+        <div className="field market-search">
+          <input
+            type="search"
+            value={riderSearch}
+            onChange={(event) => setRiderSearch(event.target.value)}
+            placeholder="Rechercher un livreur..."
+            autoComplete="off"
+            aria-label="Rechercher un livreur"
+          />
+        </div>
+
+        {data.riders.length === 0 ? (
+          <div className="empty">
+            <p className="empty-title">Aucun livreur sur la période</p>
+            <p className="empty-text">
+              Les soldes apparaîtront après l’import du rapport TIKTAK de cette période.
+            </p>
+          </div>
+        ) : filteredAndSortedRiders.length === 0 ? (
+          <div className="empty">
+            <p className="empty-title">Aucun livreur trouvé</p>
+            <p className="empty-text">Aucun livreur ne correspond à « {riderSearch} ».</p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">Livreur</th>
+                  <th scope="col" className="numeric">
+                    Cash dû
+                  </th>
+                  <th scope="col" className="numeric">
+                    Carte due
+                  </th>
+                  <th scope="col" className="numeric">
+                    Encaissé
+                  </th>
+                  <th
+                    scope="col"
+                    className="numeric"
+                    role="button"
+                    tabIndex={0}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() =>
+                      setRemainingSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setRemainingSort((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                      }
+                    }}
+                    title="Trier par reste"
+                    aria-sort={remainingSort === 'desc' ? 'descending' : 'ascending'}
+                  >
+                    Reste {remainingSort === 'desc' ? '↓' : '↑'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAndSortedRiders.map((rider) => (
+                  <tr key={rider.riderId}>
+                    <td>{rider.name}</td>
+                    <td className="numeric amount">{formatMAD(rider.cashDue)}</td>
+                    <td className="numeric amount">{formatMAD(rider.cardDue)}</td>
+                    <td className="numeric amount">{formatMAD(rider.collected)}</td>
+                    <td className={`numeric amount${rider.remaining > 0 ? ' is-due' : ''}`}>
+                      {formatMAD(rider.remaining)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <p className="page-foot">
         {imports.duplicateRows} doublon(s) · {imports.rejectedRows} ligne(s) rejetée(s) sur la

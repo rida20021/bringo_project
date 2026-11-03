@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
@@ -34,6 +34,7 @@ export default function LiveEntryForm() {
 
   const [commandId, setCommandId] = useState('');
   const [marketId, setMarketId] = useState('');
+  const [marketSearch, setMarketSearch] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [file, setFile] = useState<File | null>(null);
@@ -43,6 +44,18 @@ export default function LiveEntryForm() {
 
   const activeMarkets = markets ?? [];
   const lockedForMarkets = markets !== undefined && activeMarkets.length === 0;
+
+  const filteredMarkets = useMemo(() => {
+    const term = marketSearch.trim().toLowerCase();
+    return activeMarkets.filter((market) => {
+      if (marketId && market._id === marketId) return true;
+      if (!term) return true;
+      return (
+        market.name.toLowerCase().includes(term) ||
+        market.externalId.toLowerCase().includes(term)
+      );
+    });
+  }, [activeMarkets, marketSearch, marketId]);
 
   const resetFile = () => {
     setFile(null);
@@ -179,28 +192,43 @@ export default function LiveEntryForm() {
           />
         </label>
 
-        <label className="field">
-          <span className="field-label">Marché</span>
+        <div className="field">
+          <label htmlFor="live-entry-market-search" className="field-label">
+            Marché
+          </label>
+          <input
+            id="live-entry-market-search"
+            type="search"
+            value={marketSearch}
+            onChange={(event) => setMarketSearch(event.target.value)}
+            placeholder="Rechercher un marché..."
+            autoComplete="off"
+            aria-label="Rechercher un marché"
+          />
           <select
+            id="live-entry-market-select"
             name="marketId"
             value={marketId}
             onChange={(event) => setMarketId(event.target.value)}
             disabled={markets === undefined || lockedForMarkets}
+            aria-label="Sélectionner un marché"
           >
             <option value="">
               {markets === undefined
                 ? 'Chargement…'
                 : lockedForMarkets
                   ? 'Aucun marché disponible'
-                  : 'Sélectionner un marché'}
+                  : filteredMarkets.length === 0
+                    ? 'Aucun marché trouvé'
+                    : 'Sélectionner un marché'}
             </option>
-            {activeMarkets.map((market) => (
+            {filteredMarkets.map((market) => (
               <option key={market._id} value={market._id}>
                 {market.name}
               </option>
             ))}
           </select>
-        </label>
+        </div>
 
         <label className="field">
           <span className="field-label">Montant (MAD)</span>

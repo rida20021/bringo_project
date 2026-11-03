@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from 'convex/react';
@@ -18,6 +18,8 @@ export default function SupervisorDashboard() {
   const [selectedDate, setSelectedDate] = useState(
     () => readDateParam(searchParams) ?? todayDateInputValue()
   );
+  const [riderSearch, setRiderSearch] = useState('');
+  const [remainingSort, setRemainingSort] = useState<'desc' | 'asc'>('desc');
   const reportTimestamp =
     dateInputToTimestamp(selectedDate) ?? dateInputToTimestamp(todayDateInputValue())!;
   const isToday = selectedDate === todayDateInputValue();
@@ -25,6 +27,22 @@ export default function SupervisorDashboard() {
   const data = useQuery(api.reconciliation.getSupervisorDashboardData, {
     reportDate: reportTimestamp,
   });
+
+  const filteredAndSortedRiders = useMemo(() => {
+    if (!data?.riders) return [];
+    const riders = data.riders;
+    const query = riderSearch.trim().toLowerCase();
+    const filtered = query
+      ? riders.filter((rider) => rider.name.toLowerCase().includes(query))
+      : riders;
+
+    return [...filtered].sort((a, b) => {
+      const diff =
+        remainingSort === 'desc' ? b.remaining - a.remaining : a.remaining - b.remaining;
+      if (diff !== 0) return diff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [data?.riders, riderSearch, remainingSort]);
 
   const updateDate = (value: string) => {
     if (!value || dateInputToTimestamp(value) === null) return;
@@ -194,11 +212,35 @@ export default function SupervisorDashboard() {
             <p className="panel-sub">Soldes de la date sélectionnée, cash et carte séparés</p>
           </div>
           <span className="panel-count">
-            {riderRows.length} {riderRows.length === 1 ? 'livreur' : 'livreurs'}
+            {filteredAndSortedRiders.length}{' '}
+            {filteredAndSortedRiders.length === 1 ? 'livreur' : 'livreurs'}
           </span>
         </header>
 
-        {hasRiders ? (
+        <div className="field market-search">
+          <input
+            type="search"
+            value={riderSearch}
+            onChange={(event) => setRiderSearch(event.target.value)}
+            placeholder="Rechercher un livreur..."
+            autoComplete="off"
+            aria-label="Rechercher un livreur"
+          />
+        </div>
+
+        {!hasRiders ? (
+          <div className="empty">
+            <p className="empty-title">Aucun livreur pour cette date</p>
+            <p className="empty-text">
+              Les soldes apparaîtront après l’import du rapport TIKTAK de cette date.
+            </p>
+          </div>
+        ) : filteredAndSortedRiders.length === 0 ? (
+          <div className="empty">
+            <p className="empty-title">Aucun livreur trouvé</p>
+            <p className="empty-text">Aucun livreur ne correspond à « {riderSearch} ».</p>
+          </div>
+        ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -213,13 +255,30 @@ export default function SupervisorDashboard() {
                   <th scope="col" className="numeric">
                     Encaissé
                   </th>
-                  <th scope="col" className="numeric">
-                    Reste
+                  <th
+                    scope="col"
+                    className="numeric"
+                    role="button"
+                    tabIndex={0}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() =>
+                      setRemainingSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setRemainingSort((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                      }
+                    }}
+                    title="Trier par reste"
+                    aria-sort={remainingSort === 'desc' ? 'descending' : 'ascending'}
+                  >
+                    Reste {remainingSort === 'desc' ? '↓' : '↑'}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {riderRows.map((rider) => (
+                {filteredAndSortedRiders.map((rider) => (
                   <tr key={rider.riderId}>
                     <td>{rider.name}</td>
                     <td className="numeric amount">{formatMAD(rider.cashDue)}</td>
@@ -232,13 +291,6 @@ export default function SupervisorDashboard() {
                 ))}
               </tbody>
             </table>
-          </div>
-        ) : (
-          <div className="empty">
-            <p className="empty-title">Aucun livreur pour cette date</p>
-            <p className="empty-text">
-              Les soldes apparaîtront après l’import du rapport TIKTAK de cette date.
-            </p>
           </div>
         )}
       </section>

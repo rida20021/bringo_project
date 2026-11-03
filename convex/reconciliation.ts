@@ -1,6 +1,6 @@
 import { query } from './_generated/server';
 import type { QueryCtx } from './_generated/server';
-import type { Id } from './_generated/dataModel';
+import type { Id, Doc } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { requireSupervisor } from './lib/auth';
 import { endOfDayCasablanca, startOfDayCasablanca } from './lib/dates';
@@ -16,6 +16,119 @@ interface LiveTpeReceiptRow {
   commandId: string;
   entryDate: number;
   matchedOrder: boolean;
+}
+
+export interface RiderDashboardRow {
+  riderId: string;
+  name: string;
+  cashDue: number;
+  cardDue: number;
+  collected: number;
+  remaining: number;
+}
+
+async function buildRidersBreakdown(
+  ctx: QueryCtx,
+  isLiveMode: boolean,
+  liveEntries: Doc<'liveEntries'>[],
+  cashOrders: Doc<'orders'>[],
+  cardOrders: Doc<'orders'>[],
+  collections: Doc<'cashCollections'>[]
+): Promise<RiderDashboardRow[]> {
+  const riderMap = new Map<string, RiderDashboardRow>();
+
+  if (isLiveMode) {
+    // In live mode, group by rider user profile / linked riderId
+    const riderUserIds = Array.from(new Set(liveEntries.map((e) => e.riderUserId)));
+    const profiles = await Promise.all(
+      riderUserIds.map(async (uid) => {
+        const profile = await ctx.db
+          .query('userProfiles')
+          .withIndex('userId', (q) => q.eq('userId', uid))
+          .unique();
+        return { userId: uid, profile };
+      })
+    );
+    const userToProfile = new Map(profiles.map((p) => [p.userId, p.profile]));
+    const riderIdToKey = new Map<string, string>();
+
+    for (const entry of liveEntries) {
+      const profile = userToProfile.get(entry.riderUserId);
+      const key = profile?.riderId ?? entry.riderUserId;
+      if (profile?.riderId) riderIdToKey.set(profile.riderId, key);
+
+      if (!riderMap.has(key)) {
+        riderMap.set(key, {
+          riderId: key,
+          name: profile?.displayName ?? 'Livreur',
+          cashDue: 0,
+          cardDue: 0,
+          collected: 0,
+          remaining: 0,
+        });
+      }
+      const r = riderMap.get(key)!;
+      if (entry.paymentMethod === 'cash') r.cashDue += entry.amount;
+      else if (entry.paymentMethod === 'tpe') r.cardDue += entry.amount;
+    }
+
+    for (const col of collections) {
+      const key = riderIdToKey.get(col.riderId) ?? col.riderId;
+      let r = riderMap.get(key);
+      if (!r) {
+        const riderDoc = await ctx.db.get(col.riderId);
+        r = {
+          riderId: col.riderId,
+          name: riderDoc?.canonicalName ?? 'Livreur',
+          cashDue: 0,
+          cardDue: 0,
+          collected: 0,
+          remaining: 0,
+        };
+        riderMap.set(key, r);
+      }
+      r.collected += col.amount;
+    }
+  } else {
+    for (const order of cashOrders) {
+      if (!riderMap.has(order.riderId)) {
+        riderMap.set(order.riderId, {
+          riderId: order.riderId,
+          name: order.rawRiderName,
+          cashDue: 0,
+          cardDue: 0,
+          collected: 0,
+          remaining: 0,
+        });
+      }
+      const r = riderMap.get(order.riderId)!;
+      r.cashDue += order.amount;
+    }
+    for (const order of cardOrders) {
+      if (!riderMap.has(order.riderId)) {
+        riderMap.set(order.riderId, {
+          riderId: order.riderId,
+          name: order.rawRiderName,
+          cashDue: 0,
+          cardDue: 0,
+          collected: 0,
+          remaining: 0,
+        });
+      }
+      const r = riderMap.get(order.riderId)!;
+      r.cardDue += order.amount;
+    }
+    for (const col of collections) {
+      const r = riderMap.get(col.riderId);
+      if (r) r.collected += col.amount;
+    }
+  }
+
+  for (const [, r] of riderMap) {
+    r.remaining = r.cashDue - r.collected;
+  }
+
+  return Array.from(riderMap.values()).sort((a, b) => b.remaining - a.remaining);
 }
 
 /**
@@ -156,108 +269,14 @@ export const getSupervisorDashboardData = query({
         .reduce((sum, r) => sum + r.claimedAmount, 0) +
       pendingLiveTpe.reduce((sum, r) => sum + r.amount, 0);
 
-    const riderMap = new Map<
-      string,
-      {
-        riderId: string;
-        name: string;
-        cashDue: number;
-        cardDue: number;
-        collected: number;
-        remaining: number;
-      }
-    >();
-
-    if (isLiveMode) {
-      // In live mode, group by rider user profile / linked riderId
-      const riderUserIds = Array.from(new Set(liveEntries.map((e) => e.riderUserId)));
-      const profiles = await Promise.all(
-        riderUserIds.map(async (uid) => {
-          const profile = await ctx.db
-            .query('userProfiles')
-            .withIndex('userId', (q) => q.eq('userId', uid))
-            .unique();
-          return { userId: uid, profile };
-        })
-      );
-      const userToProfile = new Map(profiles.map((p) => [p.userId, p.profile]));
-      const riderIdToKey = new Map<string, string>();
-
-      for (const entry of liveEntries) {
-        const profile = userToProfile.get(entry.riderUserId);
-        const key = profile?.riderId ?? entry.riderUserId;
-        if (profile?.riderId) riderIdToKey.set(profile.riderId, key);
-
-        if (!riderMap.has(key)) {
-          riderMap.set(key, {
-            riderId: key,
-            name: profile?.displayName ?? 'Livreur',
-            cashDue: 0,
-            cardDue: 0,
-            collected: 0,
-            remaining: 0,
-          });
-        }
-        const r = riderMap.get(key)!;
-        if (entry.paymentMethod === 'cash') r.cashDue += entry.amount;
-        else if (entry.paymentMethod === 'tpe') r.cardDue += entry.amount;
-      }
-
-      for (const col of collections) {
-        const key = riderIdToKey.get(col.riderId) ?? col.riderId;
-        let r = riderMap.get(key);
-        if (!r) {
-          const riderDoc = await ctx.db.get(col.riderId);
-          r = {
-            riderId: col.riderId,
-            name: riderDoc?.canonicalName ?? 'Livreur',
-            cashDue: 0,
-            cardDue: 0,
-            collected: 0,
-            remaining: 0,
-          };
-          riderMap.set(key, r);
-        }
-        r.collected += col.amount;
-      }
-    } else {
-      for (const order of cashOrders) {
-        if (!riderMap.has(order.riderId)) {
-          riderMap.set(order.riderId, {
-            riderId: order.riderId,
-            name: order.rawRiderName,
-            cashDue: 0,
-            cardDue: 0,
-            collected: 0,
-            remaining: 0,
-          });
-        }
-        const r = riderMap.get(order.riderId)!;
-        r.cashDue += order.amount;
-      }
-      for (const order of cardOrders) {
-        if (!riderMap.has(order.riderId)) {
-          riderMap.set(order.riderId, {
-            riderId: order.riderId,
-            name: order.rawRiderName,
-            cashDue: 0,
-            cardDue: 0,
-            collected: 0,
-            remaining: 0,
-          });
-        }
-        const r = riderMap.get(order.riderId)!;
-        r.cardDue += order.amount;
-      }
-      for (const col of collections) {
-        const r = riderMap.get(col.riderId);
-        if (r) r.collected += col.amount;
-      }
-    }
-
-    for (const [, r] of riderMap) {
-      r.remaining = r.cashDue - r.collected;
-    }
+    const riders = await buildRidersBreakdown(
+      ctx,
+      isLiveMode,
+      liveEntries,
+      cashOrders,
+      cardOrders,
+      collections
+    );
 
     return {
       reportDate: targetDate,
@@ -274,7 +293,7 @@ export const getSupervisorDashboardData = query({
         cashOutstanding: totalCashDue - totalCollected,
         cardVariance: totalCardDue - totalTpeApproved,
       },
-      riders: Array.from(riderMap.values()).sort((a, b) => b.remaining - a.remaining),
+      riders,
       recentCollections: collections.slice(0, 10),
       pendingDeposits: deposits.filter((d) => d.status === 'submitted' || d.status === 'pending_review'),
       pendingTpe: [
@@ -384,6 +403,15 @@ export const getAdminDashboardData = query({
       .filter((r) => r.status === 'rejected')
       .reduce((s, r) => s + r.claimedAmount, 0);
 
+    const riders = await buildRidersBreakdown(
+      ctx,
+      isLiveMode,
+      liveEntries,
+      cashOrders,
+      cardOrders,
+      collections
+    );
+
     return {
       dateRange: { from, to },
       mode: isLiveMode ? ('live' as const) : ('audit' as const),
@@ -424,6 +452,7 @@ export const getAdminDashboardData = query({
           tpeReceipts.filter((r) => r.status === 'rejected').length + rejectedLiveTpe.length,
       },
       recentBatches: batches.slice(0, 20),
+      riders,
     };
   },
 });
