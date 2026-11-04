@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import MoneyChain from '@/components/MoneyChain';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatAmount, formatLongDate, formatMAD } from '@/lib/format';
 import { dateInputToTimestamp, todayDateInputValue } from '@/lib/dates';
+
+const PAGE_SIZE = 15;
 
 function readDateParam(searchParams: URLSearchParams): string | null {
   const value = searchParams.get('date');
@@ -20,6 +22,7 @@ export default function SupervisorDashboard() {
   );
   const [riderSearch, setRiderSearch] = useState('');
   const [remainingSort, setRemainingSort] = useState<'desc' | 'asc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
   const reportTimestamp =
     dateInputToTimestamp(selectedDate) ?? dateInputToTimestamp(todayDateInputValue())!;
   const isToday = selectedDate === todayDateInputValue();
@@ -43,6 +46,17 @@ export default function SupervisorDashboard() {
       return a.name.localeCompare(b.name);
     });
   }, [data?.riders, riderSearch, remainingSort]);
+
+  const totalPages = Math.ceil(filteredAndSortedRiders.length / PAGE_SIZE);
+  const paginatedRiders = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredAndSortedRiders.slice(start, start + PAGE_SIZE);
+  }, [filteredAndSortedRiders, currentPage]);
+
+  // Reset to the first page whenever the search query or sort order changes.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [riderSearch, remainingSort]);
 
   const updateDate = (value: string) => {
     if (!value || dateInputToTimestamp(value) === null) return;
@@ -270,9 +284,20 @@ export default function SupervisorDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAndSortedRiders.map((rider) => (
+                {paginatedRiders.map((rider) => (
                   <tr key={rider.riderId}>
-                    <td>{rider.name}</td>
+                    <td>
+                      {rider.riderUserId ? (
+                        <Link
+                          to={`/admin/riders/${rider.riderUserId}`}
+                          className="table-link"
+                        >
+                          {rider.name}
+                        </Link>
+                      ) : (
+                        rider.name
+                      )}
+                    </td>
                     <td className="numeric amount">{formatMAD(rider.cashDue)}</td>
                     <td className="numeric amount">{formatMAD(rider.cardDue)}</td>
                     <td className="numeric amount">{formatMAD(rider.collected)}</td>
@@ -285,6 +310,30 @@ export default function SupervisorDashboard() {
             </table>
           </div>
         )}
+
+        {totalPages > 1 ? (
+          <div className="pagination-controls">
+            <button
+              type="button"
+              className="button-ghost"
+              onClick={() => setCurrentPage((page) => page - 1)}
+              disabled={currentPage === 1}
+            >
+              ← Précédent
+            </button>
+            <span className="pagination-info">
+              Page {currentPage} sur {totalPages}
+            </span>
+            <button
+              type="button"
+              className="button-ghost"
+              onClick={() => setCurrentPage((page) => page + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Suivant →
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <p className="page-foot">

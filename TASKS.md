@@ -102,6 +102,18 @@
 - [x] **Task 6.8.4: Group Rider Entries by Date.** Group the entries list by day (e.g., "Aujourd'hui", "Hier", "03 Nov 2026") with sticky headers.
 - [x] **Task 6.8.5: Rider CSV Export.** Add a "Télécharger CSV" button so the Rider can download their own history for their records.
 
+## Milestone 6.9: TPE Cash Fallback & Rejection Management
+- [ ] **Task 6.9.1: Schema & Receipt Freshness.** Add `submittedAt` and `replacementCount` to `liveEntryReceipts`. Create `tpeCashSettlements` table.
+- [ ] **Task 6.9.2: Rejected Receipts UI.** Add `listRejectedReceipts` backend query. Add "Rejetés" tab to `PendingReceipts.tsx`.
+- [ ] **Task 6.9.3: Cash Fallback Backend.** Create `convertRejectedTpeToCash` mutation. Update `reconciliation.ts` math to move amounts from Card Due to Cash Due.
+- [ ] **Task 6.9.4: Cash Fallback UI.** Add "Régler en espèces" button to the Rejected tab.
+- [ ] **Task 6.9.5: Supervisor Allocation.** Update `createCashCollection` to accept `settlementAllocations`.
+
+## Milestone 6.10: Admin Dashboard Enhancements
+- [x] **Task 6.10.1: Clickable Rider Names.** Make the Rider names in the Dashboard "Livreurs" table clickable, routing the Admin directly to the Rider 360 View.
+- [x] **Task 6.10.2: Riders Table Pagination.** Add Classic Pagination (Prev/Next, Page X of Y) to the "Livreurs" table on the Admin and Supervisor dashboards.
+- [ ] **Task 6.10.3: Global Command Search.** Add a global search bar in the Admin header to instantly look up a Command ID and see its Excel, Live Entry, and Receipt status
+
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.
 - [ ] **Task 7.2: End-to-End Testing.** Test the full flow with real data.

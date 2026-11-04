@@ -20,6 +20,7 @@ interface LiveTpeReceiptRow {
 
 export interface RiderDashboardRow {
   riderId: string;
+  riderUserId?: string;
   name: string;
   cashDue: number;
   cardDue: number;
@@ -60,6 +61,7 @@ async function buildRidersBreakdown(
       if (!riderMap.has(key)) {
         riderMap.set(key, {
           riderId: key,
+          riderUserId: entry.riderUserId,
           name: profile?.displayName ?? 'Livreur',
           cashDue: 0,
           cardDue: 0,
@@ -77,8 +79,13 @@ async function buildRidersBreakdown(
       let r = riderMap.get(key);
       if (!r) {
         const riderDoc = await ctx.db.get(col.riderId);
+        const profile = await ctx.db
+          .query('userProfiles')
+          .withIndex('riderId', (q) => q.eq('riderId', col.riderId))
+          .first();
         r = {
           riderId: col.riderId,
+          riderUserId: profile?.userId,
           name: riderDoc?.canonicalName ?? 'Livreur',
           cashDue: 0,
           cardDue: 0,
@@ -90,10 +97,24 @@ async function buildRidersBreakdown(
       r.collected += col.amount;
     }
   } else {
+    // Excel mode: resolve riderUserId from userProfiles table using riderId
+    const riderIds = Array.from(new Set([...cashOrders, ...cardOrders].map((o) => o.riderId)));
+    const profileLookups = await Promise.all(
+      riderIds.map(async (riderId) => {
+        const profile = await ctx.db
+          .query('userProfiles')
+          .withIndex('riderId', (q) => q.eq('riderId', riderId))
+          .first();
+        return { riderId, userId: profile?.userId };
+      })
+    );
+    const riderIdToUserId = new Map(profileLookups.map((p) => [p.riderId, p.userId]));
+
     for (const order of cashOrders) {
       if (!riderMap.has(order.riderId)) {
         riderMap.set(order.riderId, {
           riderId: order.riderId,
+          riderUserId: riderIdToUserId.get(order.riderId),
           name: order.rawRiderName,
           cashDue: 0,
           cardDue: 0,
@@ -108,6 +129,7 @@ async function buildRidersBreakdown(
       if (!riderMap.has(order.riderId)) {
         riderMap.set(order.riderId, {
           riderId: order.riderId,
+          riderUserId: riderIdToUserId.get(order.riderId),
           name: order.rawRiderName,
           cashDue: 0,
           cardDue: 0,
