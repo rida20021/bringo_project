@@ -87,6 +87,8 @@
 - [x] **Task 6.6.5: Supervisor Bulk Bank Deposit.** Allow Supervisors to make one large bank deposit (e.g., 15,000 MAD) and check off multiple Riders it covers. Upload one bank receipt for the whole batch.
 - [x] **Task 6.6.6: Admin Bulk Approval.** When the Admin reviews a Supervisor's bulk deposit, show the Chain of Custody (Supervisor -> Riders -> Collections). Clicking "Approve" clears the Supervisor's Vault AND clears all the Riders' Yellow banners simultaneously.
 - [x] **Task 6.6.7: Midnight Grace Period Sync.** Ensure that the Midnight Grace Period logic applies to the Live Mode Dashboard so late-night entries show up on the correct day's Live Feed.
+- [ ] **Task 6.6.8: Grand Total in Dashboard.** Add a "Total importé (TikTak)" line at the bottom of the "Contrôle des montants" panel on the Admin Dashboard to show the sum of Cash + Card + Online payments.
+- [ ] **Task 6.6.9: Collapsible Imports Récents.** Add a toggle chevron to the "Imports récents" panel so it can be collapsed by default, matching the behavior of the other dashboard panels.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

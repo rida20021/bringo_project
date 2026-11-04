@@ -9,16 +9,7 @@ import { parseAmountToCentimes } from '@/lib/money';
 import { dateInputToTimestamp, todayDateInputValue } from '@/lib/dates';
 import { toast } from 'sonner';
 import BulkDepositForm from './BulkDepositForm';
-
-interface RiderPickerProps {
-  riders: Doc<'riders'>[];
-  riderId: string;
-  onRiderIdChange: (riderId: string) => void;
-  search: string;
-  onSearchChange: (search: string) => void;
-  searchName: string;
-  selectName: string;
-}
+import SearchableSelect from '@/components/SearchableSelect';
 
 /**
  * Searchable rider dropdown shared by supervisor forms.
@@ -27,61 +18,21 @@ function RiderPicker({
   riders,
   riderId,
   onRiderIdChange,
-  search,
-  onSearchChange,
-  searchName,
-  selectName,
-}: RiderPickerProps) {
-  const normalizedSearch = search.trim().toLocaleLowerCase('fr');
-  const filteredRiders = normalizedSearch
-    ? riders.filter((rider) =>
-        rider.canonicalName.toLocaleLowerCase('fr').includes(normalizedSearch)
-      )
-    : riders;
-  const selectedRider = riders.find((rider) => rider._id === riderId);
-  const riderOptions =
-    selectedRider && !filteredRiders.some((rider) => rider._id === selectedRider._id)
-      ? [selectedRider, ...filteredRiders]
-      : filteredRiders;
-
+}: {
+  riders: Doc<'riders'>[];
+  riderId: string;
+  onRiderIdChange: (riderId: string) => void;
+}) {
   return (
-    <>
-      <label className="field">
-        <span className="field-label">Rechercher un livreur</span>
-        <input
-          type="search"
-          name={searchName}
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Tapez un nom…"
-          autoComplete="off"
-        />
-        <span className="field-hint">Filtre la liste ci-dessous en temps réel.</span>
-      </label>
-
-      <label className="field">
-        <span className="field-label">Livreur</span>
-        <select
-          name={selectName}
-          value={riderId}
-          onChange={(event) => onRiderIdChange(event.target.value)}
-          disabled={riders.length === 0}
-        >
-          <option value="">
-            {riders.length === 0
-              ? 'Aucun livreur disponible'
-              : riderOptions.length === 0
-                ? 'Aucun livreur trouvé'
-                : 'Sélectionner un livreur'}
-          </option>
-          {riderOptions.map((rider) => (
-            <option key={rider._id} value={rider._id}>
-              {rider.canonicalName}
-            </option>
-          ))}
-        </select>
-      </label>
-    </>
+    <SearchableSelect
+      label="Livreur"
+      value={riderId}
+      options={riders.map((rider) => ({ id: rider._id, name: rider.canonicalName }))}
+      onChange={onRiderIdChange}
+      placeholder={riders.length === 0 ? 'Aucun livreur disponible' : 'Sélectionner un livreur'}
+      searchPlaceholder="Rechercher un livreur..."
+      disabled={riders.length === 0}
+    />
   );
 }
 
@@ -91,7 +42,6 @@ export default function SupervisorPage() {
   const createCashCollection = useMutation(api.deposits.createCashCollection);
 
   const [collectionRiderId, setCollectionRiderId] = useState('');
-  const [collectionRiderSearch, setCollectionRiderSearch] = useState('');
   const [collectionAmount, setCollectionAmount] = useState('');
   const [collectionNote, setCollectionNote] = useState('');
   const [collectionSubmitting, setCollectionSubmitting] = useState(false);
@@ -131,7 +81,6 @@ export default function SupervisorPage() {
 
       toast.success(`Encaissement de ${formatMAD(amountCentimes)} enregistré dans votre coffre.`);
       setCollectionRiderId('');
-      setCollectionRiderSearch('');
       setCollectionAmount('');
       setCollectionNote('');
     } catch (err) {
@@ -256,10 +205,6 @@ export default function SupervisorPage() {
             riders={activeRiders}
             riderId={collectionRiderId}
             onRiderIdChange={setCollectionRiderId}
-            search={collectionRiderSearch}
-            onSearchChange={setCollectionRiderSearch}
-            searchName="collectionRiderSearch"
-            selectName="collectionRiderId"
           />
 
           <label className="field">

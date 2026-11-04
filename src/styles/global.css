@@ -2278,7 +2278,123 @@ a {
   }
 }
 
-/* --- Hamburger & mobile sidebar --- */
+
+/* ---------- Combobox / Searchable Dropdown ---------- */
+
+.combobox {
+  position: relative;
+  width: 100%;
+}
+
+.combobox-trigger {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.combobox-trigger:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(74 57 126 / 0.15);
+}
+
+.combobox-trigger::after {
+  content: '▼';
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.combobox-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combobox-trigger.is-placeholder .combobox-value {
+  color: var(--muted-2);
+}
+
+.combobox-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.combobox-search-wrapper {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.field .combobox-search-wrapper input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+}
+
+.field .combobox-search-wrapper input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(74 57 126 / 0.15);
+}
+
+.combobox-options {
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.combobox-option {
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  color: var(--ink);
+}
+
+.combobox-option:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.combobox-option.is-selected {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.combobox-empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
 
 .hamburger-btn {
   display: none;

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
@@ -34,7 +35,6 @@ export default function LiveEntryForm() {
 
   const [commandId, setCommandId] = useState('');
   const [marketId, setMarketId] = useState('');
-  const [marketSearch, setMarketSearch] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [file, setFile] = useState<File | null>(null);
@@ -42,20 +42,16 @@ export default function LiveEntryForm() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const activeMarkets = markets ?? [];
+  const activeMarkets = useMemo(() => markets ?? [], [markets]);
   const lockedForMarkets = markets !== undefined && activeMarkets.length === 0;
 
-  const filteredMarkets = useMemo(() => {
-    const term = marketSearch.trim().toLowerCase();
-    return activeMarkets.filter((market) => {
-      if (marketId && market._id === marketId) return true;
-      if (!term) return true;
-      return (
-        market.name.toLowerCase().includes(term) ||
-        market.externalId.toLowerCase().includes(term)
-      );
-    });
-  }, [activeMarkets, marketSearch, marketId]);
+  const marketOptions = useMemo(() => {
+    return activeMarkets.map((market) => ({
+      id: market._id,
+      name: market.name,
+      keywords: market.externalId,
+    }));
+  }, [activeMarkets]);
 
   const resetFile = () => {
     setFile(null);
@@ -192,43 +188,21 @@ export default function LiveEntryForm() {
           />
         </label>
 
-        <div className="field">
-          <label htmlFor="live-entry-market-search" className="field-label">
-            Marché
-          </label>
-          <input
-            id="live-entry-market-search"
-            type="search"
-            value={marketSearch}
-            onChange={(event) => setMarketSearch(event.target.value)}
-            placeholder="Rechercher un marché..."
-            autoComplete="off"
-            aria-label="Rechercher un marché"
-          />
-          <select
-            id="live-entry-market-select"
-            name="marketId"
-            value={marketId}
-            onChange={(event) => setMarketId(event.target.value)}
-            disabled={markets === undefined || lockedForMarkets}
-            aria-label="Sélectionner un marché"
-          >
-            <option value="">
-              {markets === undefined
-                ? 'Chargement…'
-                : lockedForMarkets
-                  ? 'Aucun marché disponible'
-                  : filteredMarkets.length === 0
-                    ? 'Aucun marché trouvé'
-                    : 'Sélectionner un marché'}
-            </option>
-            {filteredMarkets.map((market) => (
-              <option key={market._id} value={market._id}>
-                {market.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SearchableSelect
+          label="Marché"
+          value={marketId}
+          options={marketOptions}
+          onChange={setMarketId}
+          placeholder={
+            markets === undefined
+              ? 'Chargement…'
+              : lockedForMarkets
+                ? 'Aucun marché disponible'
+                : 'Sélectionner un marché'
+          }
+          searchPlaceholder="Rechercher un marché..."
+          disabled={markets === undefined || lockedForMarkets}
+        />
 
         <label className="field">
           <span className="field-label">Montant (MAD)</span>
