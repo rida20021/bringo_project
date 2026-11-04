@@ -112,7 +112,12 @@
 ## Milestone 6.10: Admin Dashboard Enhancements
 - [x] **Task 6.10.1: Clickable Rider Names.** Make the Rider names in the Dashboard "Livreurs" table clickable, routing the Admin directly to the Rider 360 View.
 - [x] **Task 6.10.2: Riders Table Pagination.** Add Classic Pagination (Prev/Next, Page X of Y) to the "Livreurs" table on the Admin and Supervisor dashboards.
-- [ ] **Task 6.10.3: Global Command Search.** Add a global search bar in the Admin header to instantly look up a Command ID and see its Excel, Live Entry, and Receipt status
+- [x] **Task 6.10.3: Global Command Search.** Add a global search bar in the Admin header to instantly look up a Command ID and see its Excel, Live Entry, and Receipt status
+
+## Milestone 6.11: Markets Page Optimization
+- [ ] **Task 6.11.1: Smart City Autocomplete.** Upgrade the City `<select>` to a Combobox on the Markets page. Allow the Admin to type a new city and hit Enter to save it.
+- [ ] **Task 6.11.2: Bulk City Assignment.** Allow the Admin to select multiple markets from the table and assign a city to all of them at once.
+- [ ] **Task 6.11.3: Market Riders Count.** Show the number of assigned Riders for each market in the table.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

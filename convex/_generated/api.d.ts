@@ -33,6 +33,7 @@ import type * as orders from "../orders.js";
 import type * as receipts from "../receipts.js";
 import type * as reconciliation from "../reconciliation.js";
 import type * as riders from "../riders.js";
+import type * as search from "../search.js";
 import type * as settings from "../settings.js";
 import type * as users from "../users.js";
 
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   receipts: typeof receipts;
   reconciliation: typeof reconciliation;
   riders: typeof riders;
+  search: typeof search;
   settings: typeof settings;
   users: typeof users;
 }>;

@@ -5,6 +5,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
 import { formatLongDate, initials, roleLabels } from '@/lib/format';
 import LoadingSpinner from './LoadingSpinner';
+import GlobalSearch from './GlobalSearch';
 
 interface NavItem {
   to: string;
@@ -114,6 +115,7 @@ export default function Layout() {
           >
             ☰
           </button>
+          {isAdmin && <GlobalSearch />}
           <span className="topbar-context">
             {isAdmin ? 'Administration' : 'Supervision'}
           </span>
