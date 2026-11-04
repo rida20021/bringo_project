@@ -2062,32 +2062,6 @@ a {
   margin-top: 28px;
 }
 
-.day-totals {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.day-total {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-
-.day-total-label {
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.day-total .amount {
-  font-size: 13.5px;
-}
-
 .entry-list {
   display: flex;
   flex-direction: column;
@@ -2148,10 +2122,209 @@ a {
   color: var(--red);
 }
 
+.entry-rejection {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--red);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--red-light);
+}
+
+.entry-rejection-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.entry-rejection-reason {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--red);
+}
+
+.entry-rejection .entry-replace-button {
+  margin-top: 8px;
+}
+
 .entry-link {
   display: inline-block;
   margin-top: 10px;
   font-size: 12.5px;
+}
+
+/* ---------- Rider Date Range Card (Compact) ---------- */
+
+.rider-date-range-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.rider-date-range-card:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-dark);
+}
+
+.rider-date-range-card:active {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.rider-date-range-icon {
+  font-size: 14px;
+}
+
+.rider-date-range-chevron {
+  margin-left: 4px;
+  font-size: 10px;
+}
+
+.rider-date-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* ---------- Rider Search Bar ---------- */
+
+.rider-search-bar {
+  margin: 16px 0 16px;
+}
+
+/* ---------- Panel Head Actions (Date Controls) ---------- */
+
+.panel-head-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.panel-count {
+  font-size: 12.5px;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  padding-left: 12px;
+}
+
+/* Compact date filter */
+.date-filter.compact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.date-filter.compact .date-filter-label {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.date-filter.compact input[type="date"] {
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  min-width: 90px;
+}
+
+/* Day totals */
+.day-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.day-total {
+  flex: 1 1 120px;
+  min-width: 120px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-total-label {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.day-total-grand {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.day-total-grand .day-total-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.day-total-grand .amount {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ---------- Entry Date Header (Sticky) ---------- */
+
+.entry-date-header {
+  display: block;
+  padding: 8px 12px;
+  background: var(--paper);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+  border-bottom: 1px solid var(--line);
+}
+
+.entry-date-label {
+  display: inline-block;
+}
+
+/* ---------- Pagination Controls ---------- */
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
 }
 
 @media (max-width: 720px) {

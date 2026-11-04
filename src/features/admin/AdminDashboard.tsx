@@ -250,10 +250,6 @@ export default function AdminDashboard() {
               <dd className="amount">{formatMAD(deposits.rejected)}</dd>
             </div>
             <div className="metric-row">
-              <dt>TPE approuvé</dt>
-              <dd className="amount">{formatMAD(tpeReceipts.approved)}</dd>
-            </div>
-            <div className="metric-row">
               <dt>TPE rejeté</dt>
               <dd className="amount">{formatMAD(tpeReceipts.rejected)}</dd>
             </div>

@@ -152,21 +152,13 @@ export default function SupervisorDashboard() {
           <header className="panel-head">
             <div>
               <h2>Circuit carte</h2>
-              <p className="panel-sub">Preuves TPE et écart restant</p>
+              <p className="panel-sub">Carte due et écart restant</p>
             </div>
           </header>
           <dl className="metric-list">
             <div className="metric-row">
               <dt>Carte due</dt>
               <dd className="amount">{formatMAD(kpis.totalCardDue)}</dd>
-            </div>
-            <div className="metric-row">
-              <dt>TPE approuvé</dt>
-              <dd className="amount">{formatMAD(kpis.totalTpeApproved)}</dd>
-            </div>
-            <div className="metric-row">
-              <dt>TPE en attente</dt>
-              <dd className="amount">{formatMAD(kpis.totalTpePending)}</dd>
             </div>
             <div className={`metric-row${kpis.cardVariance > 0 ? ' is-alert' : ''}`}>
               <dt>Écart carte</dt>

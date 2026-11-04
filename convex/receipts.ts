@@ -274,6 +274,62 @@ export const rejectReceipt = mutation({
   },
 });
 
+/**
+ * Rider correction flow: replace a rejected receipt with a fresh upload and
+ * send it back to the review queue.
+ */
+export const replaceRejectedReceipt = mutation({
+  args: {
+    receiptId: v.id('liveEntryReceipts'),
+    storageId: v.id('_storage'),
+    fileName: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const appUser = await requireRider(ctx);
+
+    const receipt = await ctx.db.get(args.receiptId);
+    if (!receipt) throw new Error('Receipt not found');
+    if (receipt.riderUserId !== appUser.userId) {
+      throw new Error('Forbidden: not your receipt');
+    }
+    if (receipt.status !== 'rejected') {
+      throw new Error('Only rejected receipts can be replaced');
+    }
+
+    const storedFile = await validateReceiptFile(ctx, args);
+
+    const oldStorageId = receipt.storageId;
+
+    await ctx.db.patch(receipt._id, {
+      storageId: args.storageId,
+      fileName: args.fileName.trim(),
+      mimeType: storedFile.mimeType,
+      size: storedFile.size,
+      status: 'pending_review',
+      reviewedBy: undefined,
+      reviewedAt: undefined,
+      rejectionReason: undefined,
+    });
+
+    // The rejected file is no longer referenced: free the storage space.
+    if (oldStorageId !== args.storageId) {
+      await ctx.storage.delete(oldStorageId);
+    }
+
+    await insertAuditEvent(ctx, {
+      actorId: appUser.userId,
+      action: 'receipt.replaced',
+      targetType: 'liveEntryReceipts',
+      targetId: receipt._id,
+      afterSummary: { status: 'pending_review' },
+    });
+
+    return receipt._id;
+  },
+});
+
 /** Daily cleanup: delete storage files and DB records for rejected receipts older than 30 days. */
 export const cleanupRejectedReceipts = internalMutation({
   args: {},

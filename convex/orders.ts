@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 import type { FilterBuilder, Expression } from 'convex/server';
 import type { DataModel, Id } from './_generated/dataModel';
 import { requireRider, requireSupervisor } from './lib/auth';
-import { liveEntryDateCasablanca } from './lib/dates';
+import { liveEntryDateCasablanca, startOfDayCasablanca } from './lib/dates';
 import { validateReceiptFile } from './receipts';
 
 const livePaymentMethod = v.union(v.literal('cash'), v.literal('tpe'), v.literal('card'));
@@ -192,18 +192,32 @@ export const createLiveOrder = mutation({
   },
 });
 
-/** The signed-in rider's entries for one Casablanca day (today by default). */
+/** The signed-in rider's entries for a date range (today by default). */
 export const getMyLiveEntries = query({
-  args: { entryDate: v.optional(v.number()) },
+  args: {
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const appUser = await requireRider(ctx);
-    const entryDate = args.entryDate ?? liveEntryDateCasablanca(Date.now());
+
+    // If no range provided, default to the current Casablanca day.
+    const now = Date.now();
+    const today = liveEntryDateCasablanca(now);
+
+    const startDate = args.startDate !== undefined ? startOfDayCasablanca(args.startDate) : today;
+    const endDate =
+      args.endDate !== undefined ? startOfDayCasablanca(args.endDate) : today;
 
     const entries = await ctx.db
       .query('liveEntries')
       .withIndex('riderEntryDate', (q) =>
-        q.eq('riderUserId', appUser.userId).eq('entryDate', entryDate)
+        q
+          .eq('riderUserId', appUser.userId)
+          .gte('entryDate', startDate)
+          .lte('entryDate', endDate)
       )
+      .order('desc')
       .collect();
 
     const withReceipts = await Promise.all(
@@ -230,6 +244,6 @@ export const getMyLiveEntries = query({
       })
     );
 
-    return withReceipts.sort((a, b) => b.createdAt - a.createdAt);
+    return withReceipts;
   },
 });

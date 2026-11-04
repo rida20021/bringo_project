@@ -89,6 +89,18 @@
 - [x] **Task 6.6.7: Midnight Grace Period Sync.** Ensure that the Midnight Grace Period logic applies to the Live Mode Dashboard so late-night entries show up on the correct day's Live Feed.
 - [x] **Task 6.6.8: Grand Total in Dashboard.** Add a "Total importé (TikTak)" line at the bottom of the "Contrôle des montants" panel on the Admin Dashboard to show the sum of Cash + Card + Online payments.
 - [x] **Task 6.6.9: Collapsible Imports Récents.** Add a toggle chevron to the "Imports récents" panel so it can be collapsed by default, matching the behavior of the other dashboard panels.
+- [x] **Task 6.6.10: UI Cleanup - Hide Zero TPE Metrics.** Remove "TPE approuvé" and "TPE en attente" from the "Circuit carte" panel on both Admin and Supervisor dashboards, as they currently show 0 and add confusion until the automated API is built. Keep only "Carte due" and "Écart carte".
+
+## Milestone 6.7: Rider Correction & Re-upload
+- [x] **Task 6.7.1: Re-upload Rejected Receipts.** Add a "Remplacer le reçu" button on the Rider's "My Entries" page. This button should only appear if the receipt status is `rejected`. It should open a file picker, upload the new image, and reset the receipt status to `pending_review`.
+- [x] **Task 6.7.2: Rejection Notification UI.** Ensure the Rider sees the Admin's exact rejection reason (e.g., "Image is blurry") on their dashboard so they know what to fix.
+
+## Milestone 6.8: Rider Work History
+- [x] **Task 6.8.1: Rider History Date Picker.** Add a date range picker (Du / Au) to the Rider's "Mes entrées" page. Update the backend query `getMyLiveEntries` to accept `fromDate` and `toDate`. The UI must dynamically update the daily totals (Cash, TPE, Card) based on the selected date range.
+- [x] **Task 6.8.2: Rider Markets Filter.** Add a dropdown/pill filter on the Rider page to filter entries by a specific market.
+- [x] **Task 6.8.3: Rider Classic Pagination.** Replace "Charger plus" with classic pagination (Previous / Next, Page X of Y) to make navigation predictable.
+- [x] **Task 6.8.4: Group Rider Entries by Date.** Group the entries list by day (e.g., "Aujourd'hui", "Hier", "03 Nov 2026") with sticky headers.
+- [x] **Task 6.8.5: Rider CSV Export.** Add a "Télécharger CSV" button so the Rider can download their own history for their records.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.
