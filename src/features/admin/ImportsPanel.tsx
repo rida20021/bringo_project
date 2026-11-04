@@ -136,6 +136,7 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
   const convex = useConvex();
 
   const isAdmin = currentUser?.role === 'admin';
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<Id<'importBatches'> | null>(null);
   const [downloadingId, setDownloadingId] = useState<Id<'importBatches'> | null>(null);
   const [deletingId, setDeletingId] = useState<Id<'importBatches'> | null>(null);
@@ -198,110 +199,124 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
             {isAdmin ? ' · cliquez sur un fichier pour voir les erreurs et informations' : ''}
           </p>
         </div>
-        <span className="panel-count">{conflictRows} conflit(s)</span>
+        <div className="panel-head-actions">
+          <span className="panel-count">{conflictRows} conflit(s)</span>
+          <button
+            type="button"
+            className="panel-toggle"
+            onClick={() => setIsPanelOpen((open) => !open)}
+            aria-label={isPanelOpen ? 'Replier la section' : 'Déplier la section'}
+          >
+            {isPanelOpen ? '▼' : '▶'}
+          </button>
+        </div>
       </header>
 
-      {isAdmin ? (
-        <div aria-live="polite">
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+      {isPanelOpen && (
+        <>
+          {isAdmin ? (
+            <div aria-live="polite">
+              {error ? (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
 
-      {batches.length > 0 ? (
-        <div className="table-wrap">
-          <table className="table import-table">
-            <thead>
-              <tr>
-                <th scope="col">Fichier</th>
-                <th scope="col">Rapport</th>
-                <th scope="col" className="numeric">
-                  Lignes
-                </th>
-                <th scope="col">État</th>
-                <th scope="col">Reçu</th>
-                {isAdmin ? <th scope="col">Actions</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {batches.map((batch) => {
-                const isExpanded = expandedId === batch._id;
-                const isDownloading = downloadingId === batch._id;
-                const isDeleting = deletingId === batch._id;
-                const issuesId = `import-issues-${batch._id}`;
+          {batches.length > 0 ? (
+            <div className="table-wrap">
+              <table className="table import-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Fichier</th>
+                    <th scope="col">Rapport</th>
+                    <th scope="col" className="numeric">
+                      Lignes
+                    </th>
+                    <th scope="col">État</th>
+                    <th scope="col">Reçu</th>
+                    {isAdmin ? <th scope="col">Actions</th> : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {batches.map((batch) => {
+                    const isExpanded = expandedId === batch._id;
+                    const isDownloading = downloadingId === batch._id;
+                    const isDeleting = deletingId === batch._id;
+                    const issuesId = `import-issues-${batch._id}`;
 
-                return (
-                  <Fragment key={batch._id}>
-                    <tr className={isExpanded ? 'import-row is-expanded' : 'import-row'}>
-                      <td className="table-file">
-                        <ImportFileToggle
-                          batchId={batch._id}
-                          fileName={batch.attachmentName}
-                          isAdmin={isAdmin}
-                          isExpanded={isExpanded}
-                          issuesId={issuesId}
-                          onToggle={() => toggleBatch(batch._id)}
-                        />
-                      </td>
-                      <td>{formatShortDate(batch.reportDate)}</td>
-                      <td className="numeric amount">
-                        {batch.acceptedRows}/{batch.totalRows}
-                      </td>
-                      <td>
-                        <StatusBadge status={batch.status} />
-                      </td>
-                      <td className="table-muted">{formatDateTime(batch.receivedAt)}</td>
-                      {isAdmin ? (
-                        <td>
-                          <div className="table-actions">
-                            <button
-                              type="button"
-                              className="button-ghost"
-                              onClick={() => handleDownload(batch)}
-                              disabled={isDownloading || isDeleting || !batch.storageId}
-                              title={
-                                batch.storageId
-                                  ? 'Télécharger le fichier original'
-                                  : 'Fichier original non disponible'
-                              }
-                            >
-                              {isDownloading ? 'Téléchargement…' : 'Télécharger'}
-                            </button>
-                            <button
-                              type="button"
-                              className="button-ghost is-danger"
-                              onClick={() => handleDelete(batch)}
-                              disabled={isDownloading || isDeleting}
-                            >
-                              {isDeleting ? 'Suppression…' : 'Supprimer'}
-                            </button>
-                          </div>
-                        </td>
-                      ) : null}
-                    </tr>
-                    {isAdmin && isExpanded ? (
-                      <tr className="import-details-row" id={issuesId}>
-                        <td colSpan={columnCount}>
-                          <ImportIssues batchId={batch._id} />
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="empty">
-          <p className="empty-title">Aucun rapport sur la période</p>
-          <p className="empty-text">
-            Les rapports TIKTAK reçus par e-mail apparaîtront ici avec leur état de traitement.
-          </p>
-        </div>
+                    return (
+                      <Fragment key={batch._id}>
+                        <tr className={isExpanded ? 'import-row is-expanded' : 'import-row'}>
+                          <td className="table-file">
+                            <ImportFileToggle
+                              batchId={batch._id}
+                              fileName={batch.attachmentName}
+                              isAdmin={isAdmin}
+                              isExpanded={isExpanded}
+                              issuesId={issuesId}
+                              onToggle={() => toggleBatch(batch._id)}
+                            />
+                          </td>
+                          <td>{formatShortDate(batch.reportDate)}</td>
+                          <td className="numeric amount">
+                            {batch.acceptedRows}/{batch.totalRows}
+                          </td>
+                          <td>
+                            <StatusBadge status={batch.status} />
+                          </td>
+                          <td className="table-muted">{formatDateTime(batch.receivedAt)}</td>
+                          {isAdmin ? (
+                            <td>
+                              <div className="table-actions">
+                                <button
+                                  type="button"
+                                  className="button-ghost"
+                                  onClick={() => handleDownload(batch)}
+                                  disabled={isDownloading || isDeleting || !batch.storageId}
+                                  title={
+                                    batch.storageId
+                                      ? 'Télécharger le fichier original'
+                                      : 'Fichier original non disponible'
+                                  }
+                                >
+                                  {isDownloading ? 'Téléchargement…' : 'Télécharger'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="button-ghost is-danger"
+                                  onClick={() => handleDelete(batch)}
+                                  disabled={isDownloading || isDeleting}
+                                >
+                                  {isDeleting ? 'Suppression…' : 'Supprimer'}
+                                </button>
+                              </div>
+                            </td>
+                          ) : null}
+                        </tr>
+                        {isAdmin && isExpanded ? (
+                          <tr className="import-details-row" id={issuesId}>
+                            <td colSpan={columnCount}>
+                              <ImportIssues batchId={batch._id} />
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty">
+              <p className="empty-title">Aucun rapport sur la période</p>
+              <p className="empty-text">
+                Les rapports TIKTAK reçus par e-mail apparaîtront ici avec leur état de traitement.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

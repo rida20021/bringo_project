@@ -428,6 +428,7 @@ describe('getAdminDashboardData', () => {
       cashDue: 4000,
       cardDue: 2000,
       onlinePaymentExcluded: 0,
+      totalImported: 6000,
     });
     // The DAY_A collection was recorded on DAY_C but settles report day A.
     expect(data.collections).toMatchObject({ total: 1200, count: 2 });

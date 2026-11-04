@@ -403,6 +403,10 @@ export const getAdminDashboardData = query({
       .filter((r) => r.status === 'rejected')
       .reduce((s, r) => s + r.claimedAmount, 0);
 
+    // Grand total as reported by TikTak: every payment method of the day,
+    // including the online payments that are excluded from the cash chain.
+    const totalImported = cashDue + cardDue + onlinePaymentExcluded;
+
     const riders = await buildRidersBreakdown(
       ctx,
       isLiveMode,
@@ -427,6 +431,7 @@ export const getAdminDashboardData = query({
         cashDue,
         cardDue,
         onlinePaymentExcluded,
+        totalImported,
       },
       collections: {
         total: collections.reduce((s, c) => s + c.amount, 0),

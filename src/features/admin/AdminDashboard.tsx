@@ -226,6 +226,10 @@ export default function AdminDashboard() {
               <dt>Paiement en ligne exclu</dt>
               <dd className="amount">{formatMAD(totals.onlinePaymentExcluded)}</dd>
             </div>
+            <div className="metric-row is-total">
+              <dt>Total importé (TikTak)</dt>
+              <dd className="amount">{formatMAD(totals.totalImported)}</dd>
+            </div>
           </dl>
         </section>
 
