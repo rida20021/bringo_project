@@ -25,12 +25,6 @@ const DEFAULT_RANGE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 10;
 
-function startOfDayCasablanca(ts: number): number {
-  const zoned = new Date(ts);
-  zoned.setHours(0, 0, 0, 0);
-  return zoned.getTime();
-}
-
 function initialRange(): { from: string; to: string } {
   const today = todayDateInputValue();
   const fromTs = Date.now() - DEFAULT_RANGE_DAYS * DAY_MS;
@@ -44,23 +38,20 @@ function readDateInput(value: string): number | null {
 }
 
 function formatEntryDate(date: number): string {
-  const now = Date.now();
-  const todayStart = startOfDayCasablanca(now);
-  const yesterdayStart = todayStart - DAY_MS;
-  const entryStart = startOfDayCasablanca(date);
+  const today = todayDateInputValue();
+  const todayTimestamp = dateInputToTimestamp(today) ?? Date.now();
+  const yesterday = timestampToDateInputValue(todayTimestamp - DAY_MS);
+  const entryDay = timestampToDateInputValue(date);
 
-  if (entryStart === todayStart) {
-    return 'Aujourd’hui';
-  }
-  if (entryStart === yesterdayStart) {
-    return 'Hier';
-  }
+  if (entryDay === today) return 'Aujourd’hui';
+  if (entryDay === yesterday) return 'Hier';
 
-  const d = new Date(entryStart);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = String(d.getFullYear()).slice(-2);
-  return `Le ${dd}/${mm}/${yy}`;
+  return `Le ${new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Africa/Casablanca',
+  }).format(new Date(date))}`;
 }
 
 export default function MyEntries() {
@@ -188,7 +179,6 @@ export default function MyEntries() {
     return `${dd1}/${mm1}/${yy1} — ${dd2}/${mm2}/${yy2}`;
   };
 
-  const searchQueryRef = useRef('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredEntries = useMemo(() => {
@@ -201,36 +191,29 @@ export default function MyEntries() {
     });
   }, [entries, searchQuery, marketFilter]);
 
-  // Group entries by entryDate, sorted by date descending
-  const groupedEntries = useMemo(() => {
-    if (!filteredEntries || filteredEntries.length === 0) return [];
-    const groups = new Map<number, typeof filteredEntries>();
-    filteredEntries.forEach((entry) => {
-      const dateKey = entry.entryDate;
-      const existing = groups.get(dateKey) || [];
-      existing.push(entry);
-      groups.set(dateKey, existing);
-    });
-
-    // Sort groups by date descending (most recent first)
-    const sortedDates = Array.from(groups.keys()).sort((a, b) => b - a);
-    return sortedDates.map((date) => ({
-      date,
-      label: formatEntryDate(date),
-      entries: groups.get(date)!,
-    }));
-  }, [filteredEntries]);
-
-  // Flatten for pagination (all entries across all dates)
-  const allEntriesForPagination = useMemo(() => {
-    return filteredEntries;
-  }, [filteredEntries]);
-
-  const totalPages = Math.ceil(allEntriesForPagination.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filteredEntries.length / PAGE_SIZE);
   const paginatedEntries = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return allEntriesForPagination.slice(start, start + PAGE_SIZE);
-  }, [allEntriesForPagination, currentPage]);
+    return filteredEntries.slice(start, start + PAGE_SIZE);
+  }, [filteredEntries, currentPage]);
+
+  // Group only the current page so pagination never renders empty date headers.
+  const groupedEntries = useMemo(() => {
+    const groups = new Map<number, typeof paginatedEntries>();
+    for (const entry of paginatedEntries) {
+      const group = groups.get(entry.entryDate) ?? [];
+      group.push(entry);
+      groups.set(entry.entryDate, group);
+    }
+
+    return Array.from(groups.entries())
+      .sort(([dateA], [dateB]) => dateB - dateA)
+      .map(([date, groupEntries]) => ({
+        date,
+        label: formatEntryDate(date),
+        entries: groupEntries,
+      }));
+  }, [paginatedEntries]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -327,90 +310,104 @@ export default function MyEntries() {
 
   return (
     <section className="rider-section" aria-labelledby="my-entries-title">
-      <header className="panel-head">
-        <div>
+      <header className="rider-entries-header">
+        <div className="rider-entries-title-row">
           <h2 id="my-entries-title">Mes entrées</h2>
-          <div className="rider-date-range-card" onClick={() => setIsExpanded(!isExpanded)}>
-            <span className="rider-date-range-icon" aria-hidden="true">📅</span>
-            <span className="rider-date-range-text">{formatRangeLabel()}</span>
-            <span className="rider-date-range-chevron">{isExpanded ? '▲' : '▼'}</span>
-          </div>
-          {searchQuery && (
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                setSearchQuery('');
-                searchQueryRef.current = '';
-              }}
-              style={{ fontSize: '11.5px', marginLeft: '8px' }}
-            >
-              Effacer
-            </button>
-          )}
-        </div>
-        <div className="panel-head-actions">
-          {isExpanded && (
-            <div className="rider-date-inputs" style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', marginBottom: '8px' }}>
-              <label className="date-filter compact" htmlFor="rider-from-date">
-                <span className="date-filter-label">Du</span>
-                <input
-                  id="rider-from-date"
-                  type="date"
-                  value={range.from}
-                  max={range.to}
-                  onChange={(event) => handleFromChange(event.target.value)}
-                />
-              </label>
-              <label className="date-filter compact" htmlFor="rider-to-date">
-                <span className="date-filter-label">Au</span>
-                <input
-                  id="rider-to-date"
-                  type="date"
-                  value={range.to}
-                  min={range.from}
-                  onChange={(event) => handleToChange(event.target.value)}
-                />
-              </label>
-              <button type="button" className="button-ghost" onClick={resetToToday}>
-                7j
-              </button>
-            </div>
-          )}
-          <button type="button" className="button-ghost" onClick={downloadCSV}>
+          <button
+            type="button"
+            className="button-ghost rider-csv-button"
+            onClick={downloadCSV}
+            disabled={filteredEntries.length === 0}
+          >
             Télécharger CSV
           </button>
-          <span className="panel-count">
-            {filteredEntries.length} commande{filteredEntries.length === 1 ? '' : 's'}
-          </span>
         </div>
-      </header>
 
-      <div className="rider-search-bar">
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <input
-            type="text"
-            className="field"
-            placeholder="Rechercher par commande…"
-            value={searchQuery}
-            onChange={(event) => handleSearchChange(event.target.value)}
-            style={{ flex: 1 }}
-          />
-          <div style={{ flex: 1 }}>
-            <select
-              className="field"
-              value={marketFilter}
-              onChange={(event) => handleMarketChange(event.target.value)}
-            >
-              {markets.map((market) => (
-                <option key={market} value={market}>
-                  {market}
-                </option>
-              ))}
-            </select>
+        <div className="rider-filter-bar">
+          <button
+            type="button"
+            className="rider-date-range-card"
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+            aria-expanded={isExpanded}
+            aria-controls="rider-date-range-fields"
+          >
+            <span className="rider-date-range-icon" aria-hidden="true">📅</span>
+            <span className="rider-date-range-text">{formatRangeLabel()}</span>
+            <span className="rider-date-range-chevron" aria-hidden="true">
+              {isExpanded ? '▲' : '▼'}
+            </span>
+          </button>
+
+          <div className="rider-command-search">
+            <input
+              type="search"
+              placeholder="Rechercher par commande…"
+              value={searchQuery}
+              onChange={(event) => handleSearchChange(event.target.value)}
+              aria-label="Rechercher par numéro de commande"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                className="rider-search-clear"
+                onClick={() => handleSearchChange('')}
+                aria-label="Effacer la recherche"
+              >
+                ×
+              </button>
+            ) : null}
           </div>
+
+          <select
+            className="rider-market-filter"
+            value={marketFilter}
+            onChange={(event) => handleMarketChange(event.target.value)}
+            aria-label="Filtrer par marché"
+          >
+            {markets.map((market) => (
+              <option key={market} value={market}>
+                {market}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
+
+        {isExpanded ? (
+          <div id="rider-date-range-fields" className="rider-date-inputs">
+            <label className="date-filter compact" htmlFor="rider-from-date">
+              <span className="date-filter-label">Du</span>
+              <input
+                id="rider-from-date"
+                type="date"
+                value={range.from}
+                max={range.to}
+                onChange={(event) => handleFromChange(event.target.value)}
+              />
+            </label>
+            <label className="date-filter compact" htmlFor="rider-to-date">
+              <span className="date-filter-label">Au</span>
+              <input
+                id="rider-to-date"
+                type="date"
+                value={range.to}
+                min={range.from}
+                onChange={(event) => handleToChange(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="button-ghost rider-seven-day-button"
+              onClick={resetToToday}
+            >
+              7j
+            </button>
+          </div>
+        ) : null}
+
+        <p className="rider-entries-count" aria-live="polite">
+          {filteredEntries.length} commande{filteredEntries.length === 1 ? '' : 's'}
+        </p>
+      </header>
 
       <input
         ref={fileInputRef}
@@ -458,16 +455,12 @@ export default function MyEntries() {
         <>
           <ul className="entry-list">
             {groupedEntries.map((group) => (
-              <li key={group.date}>
-                <div
-                  className="entry-date-header"
-                  style={{ position: 'sticky', top: '0', zIndex: 10, backgroundColor: 'var(--paper)' }}
-                >
+              <li key={group.date} className="entry-date-group">
+                <div className="entry-date-header">
                   <span className="entry-date-label">{group.label}</span>
                 </div>
-                {group.entries
-                  .filter((e) => paginatedEntries.includes(e))
-                  .map((entry) => {
+                <ul className="entry-group-list">
+                  {group.entries.map((entry) => {
                     const receipt = [...entry.receipts].sort((a, b) => b.createdAt - a.createdAt)[0];
                     const isRejected = receipt?.status === 'rejected';
                     const isReplacing = replacingReceiptId !== null && receipt?._id === replacingReceiptId;
@@ -525,6 +518,7 @@ export default function MyEntries() {
                       </li>
                     );
                   })}
+                </ul>
               </li>
             ))}
           </ul>

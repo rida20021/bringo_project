@@ -2153,14 +2153,107 @@ a {
   font-size: 12.5px;
 }
 
+/* ---------- Rider Entries Header (Filter Bar) ---------- */
+
+.rider-entries-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.rider-entries-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rider-entries-title-row h2 {
+  margin: 0;
+}
+
+.rider-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.rider-command-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.rider-command-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.rider-command-search input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(74 57 126 / 0.15);
+}
+
+.rider-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rider-market-filter {
+  flex: 0 1 180px;
+  min-width: 150px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.rider-market-filter:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(74 57 126 / 0.15);
+}
+
+.rider-entries-count {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
 /* ---------- Rider Date Range Card (Compact) ---------- */
 
 .rider-date-range-card {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  margin-top: 8px;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
   background: var(--primary-soft);
   border: 1px solid var(--primary);
   border-radius: var(--radius-sm);
@@ -2193,8 +2286,46 @@ a {
 .rider-date-inputs {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 8px;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.rider-date-inputs .date-filter.compact {
+  flex: 0 0 auto;
+}
+
+.rider-seven-day-button {
+  margin-left: 0;
+  align-self: flex-end;
+}
+
+@media (max-width: 640px) {
+  .rider-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rider-filter-bar .rider-date-range-card,
+  .rider-command-search,
+  .rider-market-filter {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .rider-date-inputs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rider-date-inputs .date-filter.compact,
+  .rider-date-inputs .date-filter.compact input[type='date'],
+  .rider-seven-day-button {
+    width: 100%;
+  }
 }
 
 /* ---------- Rider Search Bar ---------- */
@@ -2293,9 +2424,25 @@ a {
   color: var(--ink);
 }
 
-/* ---------- Entry Date Header (Sticky) ---------- */
+/* ---------- Entry Date Group (Sticky Header) ---------- */
+
+.entry-date-group {
+  list-style: none;
+}
+
+.entry-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 
 .entry-date-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: block;
   padding: 8px 12px;
   background: var(--paper);
