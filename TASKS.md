@@ -115,7 +115,7 @@
 - [x] **Task 6.10.3: Global Command Search.** Add a global search bar in the Admin header to instantly look up a Command ID and see its Excel, Live Entry, and Receipt status
 
 ## Milestone 6.11: Markets Page Optimization
-- [ ] **Task 6.11.1: Smart City Autocomplete.** Upgrade the City `<select>` to a Combobox on the Markets page. Allow the Admin to type a new city and hit Enter to save it.
+- [x] **Task 6.11.1: Smart City Autocomplete.** Upgrade the City `<select>` to a Combobox on the Markets page. Allow the Admin to type a new city and hit Enter to save it.
 - [ ] **Task 6.11.2: Bulk City Assignment.** Allow the Admin to select multiple markets from the table and assign a city to all of them at once.
 - [ ] **Task 6.11.3: Market Riders Count.** Show the number of assigned Riders for each market in the table.
 

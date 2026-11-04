@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
@@ -17,10 +17,6 @@ function readError(error: unknown): string {
   return 'Une erreur est survenue. Réessayez.';
 }
 
-function isKnownCity(city: string): boolean {
-  return MOROCCAN_CITIES.some((candidate) => candidate === city);
-}
-
 export default function MarketsPage() {
   const markets = useQuery(api.markets.listMarkets, { includeInactive: true });
   const createMarket = useMutation(api.markets.createMarket);
@@ -28,7 +24,7 @@ export default function MarketsPage() {
 
   const [name, setName] = useState('');
   const [externalId, setExternalId] = useState('');
-  const [city, setCity] = useState('');
+  const [city, setCity] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -38,8 +34,20 @@ export default function MarketsPage() {
   const [editingId, setEditingId] = useState<Id<'markets'> | null>(null);
   const [editName, setEditName] = useState('');
   const [editExternalId, setEditExternalId] = useState('');
-  const [editCity, setEditCity] = useState('');
+  const [editCity, setEditCity] = useState<string>('');
+  const [editCityInput, setEditCityInput] = useState<string>('');
   const [editPending, setEditPending] = useState(false);
+
+  // Combine existing cities with any user-typed city that isn't in the list
+  const cityOptions = useMemo(() => {
+    const cityList = [...(MOROCCAN_CITIES as unknown as string[])];
+    // Add the current editCity if it's not already in the known cities
+    const cityExists = cityList.includes(editCity);
+    if (editCity && !cityExists) {
+      cityList.push(editCity);
+    }
+    return cityList;
+  }, [editCity]);
 
   if (markets === undefined) return <LoadingSpinner />;
 
@@ -100,6 +108,7 @@ export default function MarketsPage() {
     setEditName(market.name);
     setEditExternalId(market.externalId);
     setEditCity(market.city ?? '');
+    setEditCityInput(market.city ?? '');
   };
 
   const cancelEdit = () => {
@@ -107,6 +116,7 @@ export default function MarketsPage() {
     setEditName('');
     setEditExternalId('');
     setEditCity('');
+    setEditCityInput('');
   };
 
   const handleSaveEdit = async (market: (typeof markets)[number]) => {
@@ -197,14 +207,20 @@ export default function MarketsPage() {
 
           <label className="field">
             <span className="field-label">Ville</span>
-            <select name="city" value={city} onChange={(event) => setCity(event.target.value)}>
-              <option value="">Sélectionner une ville</option>
+            <input
+              type="text"
+              list="city-options"
+              name="city"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="Casablanca"
+              autoComplete="off"
+            />
+            <datalist id="city-options">
               {MOROCCAN_CITIES.map((option) => (
-                <option value={option} key={option}>
-                  {option}
-                </option>
+                <option key={option} value={option} />
               ))}
-            </select>
+            </datalist>
           </label>
 
           <button type="submit" className="button button-primary" disabled={pending}>
@@ -310,23 +326,19 @@ export default function MarketsPage() {
                             </td>
                             <td className={isEditing ? undefined : 'table-muted'}>
                               {isEditing ? (
-                                <select
+                                <input
+                                  type="text"
+                                  list="edit-city-options"
                                   className="table-edit-control"
                                   aria-label={`Ville de ${market.name}`}
-                                  value={editCity}
-                                  onChange={(event) => setEditCity(event.target.value)}
+                                  value={editCityInput}
+                                  onChange={(event) => {
+                                    setEditCityInput(event.target.value);
+                                    setEditCity(event.target.value);
+                                  }}
                                   disabled={editPending}
-                                >
-                                  <option value="">Sélectionner</option>
-                                  {editCity && !isKnownCity(editCity) ? (
-                                    <option value={editCity}>{editCity}</option>
-                                  ) : null}
-                                  {MOROCCAN_CITIES.map((option) => (
-                                    <option value={option} key={option}>
-                                      {option}
-                                    </option>
-                                  ))}
-                                </select>
+                                  autoComplete="off"
+                                />
                               ) : (
                                 market.city ?? '—'
                               )}
@@ -402,6 +414,13 @@ export default function MarketsPage() {
             )}
           </>
         )}
+
+        {/* Hidden datalist for city autocomplete in edit form */}
+        <datalist id="edit-city-options">
+          {cityOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
       </section>
     </div>
   );
