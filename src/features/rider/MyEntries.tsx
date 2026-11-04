@@ -275,7 +275,7 @@ export default function MyEntries() {
         entry.commandId,
         entry.marketName,
         paymentMethodLabels[entry.paymentMethod],
-        entry.amount.toString(),
+        (entry.amount / 100).toFixed(2),
         dateStr,
         receiptStatus,
       ]
