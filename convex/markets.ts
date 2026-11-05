@@ -60,7 +60,56 @@ export const listMarkets = query({
           .filter((q) => q.eq(q.field('isActive'), true))
           .collect();
 
-    return markets.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+    // Calculate unique rider count per market from both orders and liveEntries
+    const marketIds = markets.map((m) => m._id);
+    const riderCountMap = new Map<Id<'markets'>, number>();
+
+    // Initialize all markets with 0
+    for (const marketId of marketIds) {
+      riderCountMap.set(marketId, 0);
+    }
+
+    // Collect unique rider IDs from orders (riderId field)
+    const ordersRidersMap = new Map<Id<'markets'>, Set<Id<'riders'>>>();
+    for (const marketId of marketIds) {
+      ordersRidersMap.set(marketId, new Set());
+    }
+
+    const orders = await ctx.db.query('orders').collect();
+    for (const order of orders) {
+      if (order.marketId && ordersRidersMap.has(order.marketId)) {
+        ordersRidersMap.get(order.marketId)!.add(order.riderId);
+      }
+    }
+
+    // Collect unique rider user IDs from liveEntries (riderUserId field)
+    const liveEntriesRidersMap = new Map<Id<'markets'>, Set<Id<'users'>>>();
+    for (const marketId of marketIds) {
+      liveEntriesRidersMap.set(marketId, new Set());
+    }
+
+    const liveEntries = await ctx.db.query('liveEntries').collect();
+    for (const entry of liveEntries) {
+      if (liveEntriesRidersMap.has(entry.marketId)) {
+        liveEntriesRidersMap.get(entry.marketId)!.add(entry.riderUserId);
+      }
+    }
+
+    // Combine both counts: total unique riders = orders riders + live entries riders
+    // Note: riderId and riderUserId are different ID types, so we count both sets
+    for (const marketId of marketIds) {
+      const ordersRidersCount = ordersRidersMap.get(marketId)!.size;
+      const liveEntriesRidersCount = liveEntriesRidersMap.get(marketId)!.size;
+      riderCountMap.set(marketId, ordersRidersCount + liveEntriesRidersCount);
+    }
+
+    // Add riderCount to each market
+    const marketsWithRiderCount = markets.map((market) => ({
+      ...market,
+      riderCount: riderCountMap.get(market._id) ?? 0,
+    }));
+
+    return marketsWithRiderCount.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
   },
 });
 
@@ -190,6 +239,32 @@ export const bulkCreateMarkets = internalMutation({
     }
 
     return { created, skipped, errors };
+  },
+});
+
+export const bulkAssignCityToMarkets = mutation({
+  args: {
+    marketIds: v.array(v.id('markets')),
+    city: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const city = normalize(args.city);
+    if (!city) throw new Error('City is required');
+
+    const now = Date.now();
+    let updated = 0;
+
+    for (const marketId of args.marketIds) {
+      const market = await ctx.db.get(marketId);
+      if (market) {
+        await ctx.db.patch(marketId, { city, updatedAt: now });
+        updated += 1;
+      }
+    }
+
+    return { updated };
   },
 });
 

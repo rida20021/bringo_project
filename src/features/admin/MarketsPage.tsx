@@ -21,6 +21,7 @@ export default function MarketsPage() {
   const markets = useQuery(api.markets.listMarkets, { includeInactive: true });
   const createMarket = useMutation(api.markets.createMarket);
   const updateMarket = useMutation(api.markets.updateMarket);
+  const bulkAssignCity = useMutation(api.markets.bulkAssignCityToMarkets);
 
   const [name, setName] = useState('');
   const [externalId, setExternalId] = useState('');
@@ -38,6 +39,11 @@ export default function MarketsPage() {
   const [editCityInput, setEditCityInput] = useState<string>('');
   const [editPending, setEditPending] = useState(false);
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<Id<'markets'>>>(new Set());
+  const [bulkCity, setBulkCity] = useState<string>('');
+  const [bulkPending, setBulkPending] = useState(false);
+
   // Combine existing cities with any user-typed city that isn't in the list
   const cityOptions = useMemo(() => {
     const cityList = [...(MOROCCAN_CITIES as unknown as string[])];
@@ -46,8 +52,13 @@ export default function MarketsPage() {
     if (editCity && !cityExists) {
       cityList.push(editCity);
     }
+    // Also include bulkCity if it's new
+    const bulkCityExists = cityList.includes(bulkCity);
+    if (bulkCity && !bulkCityExists) {
+      cityList.push(bulkCity);
+    }
     return cityList;
-  }, [editCity]);
+  }, [editCity, bulkCity]);
 
   if (markets === undefined) return <LoadingSpinner />;
 
@@ -157,6 +168,52 @@ export default function MarketsPage() {
   const displayedMarkets = filteredMarkets.slice(0, visibleCount);
   const hasMore = filteredMarkets.length > visibleCount;
   const activeCount = markets.filter((market) => market.isActive).length;
+
+  // Bulk selection handlers
+  const toggleSelectAll = () => {
+    if (selectedIds.size === displayedMarkets.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayedMarkets.map((m) => m._id)));
+    }
+  };
+
+  const toggleSelect = (marketId: Id<'markets'>) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(marketId)) {
+      newSet.delete(marketId);
+    } else {
+      newSet.add(marketId);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const handleBulkAssign = async () => {
+    resetFeedback();
+    if (!bulkCity.trim()) {
+      setError('La ville est obligatoire.');
+      return;
+    }
+    if (selectedIds.size === 0) {
+      setError('Sélectionnez au moins un marché.');
+      return;
+    }
+
+    setBulkPending(true);
+    try {
+      const result = await bulkAssignCity({
+        marketIds: Array.from(selectedIds),
+        city: bulkCity.trim(),
+      });
+      setSuccess(`Ville assignée à ${result.updated} marché(s).`);
+      setSelectedIds(new Set());
+      setBulkCity('');
+    } catch (err) {
+      setError(readError(err));
+    } finally {
+      setBulkPending(false);
+    }
+  };
 
   return (
     <div className="page">
@@ -282,12 +339,61 @@ export default function MarketsPage() {
               </div>
             ) : (
               <>
+                {selectedIds.size > 0 && (
+                  <div className="bulk-action-bar">
+                    <span className="bulk-count">
+                      {selectedIds.size} marché(s) sélectionné(s)
+                    </span>
+                    <div className="bulk-controls">
+                      <input
+                        type="text"
+                        list="bulk-city-options"
+                        placeholder="Assigner une ville…"
+                        value={bulkCity}
+                        onChange={(e) => setBulkCity(e.target.value)}
+                        disabled={bulkPending}
+                        autoComplete="off"
+                      />
+                      <datalist id="bulk-city-options">
+                        {MOROCCAN_CITIES.map((option) => (
+                          <option key={option} value={option} />
+                        ))}
+                      </datalist>
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={handleBulkAssign}
+                        disabled={bulkPending || !bulkCity.trim()}
+                      >
+                        {bulkPending ? 'Assignation…' : 'Appliquer'}
+                      </button>
+                      <button
+                        type="button"
+                        className="button-ghost"
+                        onClick={() => setSelectedIds(new Set())}
+                        disabled={bulkPending}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
+                        <th scope="col" className="col-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={displayedMarkets.length > 0 && selectedIds.size === displayedMarkets.length}
+                            onChange={toggleSelectAll}
+                            aria-label="Tout sélectionner"
+                          />
+                        </th>
                         <th scope="col">Nom</th>
                         <th scope="col">Identifiant externe</th>
+                        <th scope="col">Livreurs</th>
                         <th scope="col">Ville</th>
                         <th scope="col">État</th>
                         <th scope="col">Actions</th>
@@ -296,8 +402,17 @@ export default function MarketsPage() {
                     <tbody>
                       {displayedMarkets.map((market) => {
                         const isEditing = editingId === market._id;
+                        const isSelected = selectedIds.has(market._id);
                         return (
                           <tr key={market._id} className={isEditing ? 'is-editing' : undefined}>
+                            <td className="col-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelect(market._id)}
+                                aria-label={`Sélectionner ${market.name}`}
+                              />
+                            </td>
                             <td>
                               {isEditing ? (
                                 <input
@@ -323,6 +438,9 @@ export default function MarketsPage() {
                               ) : (
                                 market.externalId
                               )}
+                            </td>
+                            <td className="table-muted">
+                              {market.riderCount ?? 0}
                             </td>
                             <td className={isEditing ? undefined : 'table-muted'}>
                               {isEditing ? (
