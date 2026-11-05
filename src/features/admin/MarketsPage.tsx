@@ -17,6 +17,35 @@ function readError(error: unknown): string {
   return 'Une erreur est survenue. Réessayez.';
 }
 
+function formatCurrencyAbbreviated(centimes: number): { display: string; full: string } {
+  const dirhams = centimes / 100;
+  
+  // Full format for tooltip
+  const full = new Intl.NumberFormat('fr-MA', {
+    style: 'currency',
+    currency: 'MAD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(dirhams);
+  
+  // Abbreviated format for display
+  let display: string;
+  if (dirhams >= 1_000_000) {
+    // Millions: 1.25M MAD
+    const millions = dirhams / 1_000_000;
+    display = `${millions.toFixed(2).replace('.', ',')}M MAD`;
+  } else if (dirhams >= 10_000) {
+    // Thousands: 9.02K MAD
+    const thousands = dirhams / 1_000;
+    display = `${thousands.toFixed(2).replace('.', ',')}K MAD`;
+  } else {
+    // Small amounts: show exact
+    display = full;
+  }
+  
+  return { display, full };
+}
+
 export default function MarketsPage() {
   const markets = useQuery(api.markets.listMarkets, { includeInactive: true });
   const createMarket = useMutation(api.markets.createMarket);
@@ -394,6 +423,7 @@ export default function MarketsPage() {
                         <th scope="col">Nom</th>
                         <th scope="col">Identifiant externe</th>
                         <th scope="col">Livreurs</th>
+                        <th scope="col" className="text-right" style={{ minWidth: '120px' }}>Volume Total</th>
                         <th scope="col">Ville</th>
                         <th scope="col">État</th>
                         <th scope="col">Actions</th>
@@ -441,6 +471,12 @@ export default function MarketsPage() {
                             </td>
                             <td className="table-muted">
                               {market.riderCount ?? 0}
+                            </td>
+                            <td 
+                              className="table-muted text-right tabular-nums"
+                              title={formatCurrencyAbbreviated(market.totalRevenue ?? 0).full}
+                            >
+                              {formatCurrencyAbbreviated(market.totalRevenue ?? 0).display}
                             </td>
                             <td className={isEditing ? undefined : 'table-muted'}>
                               {isEditing ? (

@@ -118,6 +118,13 @@
 - [x] **Task 6.11.1: Smart City Autocomplete.** Upgrade the City `<select>` to a Combobox on the Markets page. Allow the Admin to type a new city and hit Enter to save it.
 - [x] **Task 6.11.2: Bulk City Assignment.** Allow the Admin to select multiple markets from the table and assign a city to all of them at once.
 - [x] **Task 6.11.3: Market Riders Count.** Show the number of assigned Riders for each market in the table.
+- [x] **Task 6.11.4: Market Revenue Aggregation (Phase 1).** 
+  Add a "Volume Total" (Chiffre d'Affaires) column to the Markets page. Update the backend query to aggregate the `Total` amount from the `orders` table per market using a proper index for performance. Update the frontend table to display the formatted revenue.
+
+## Milestone 6.12: Dashboard Import Insights & Dynamic Navigation
+- [x] **Task 6.12.1: Backend Import Breakdown.** Update the `getImportBatches` query to return the calculated totals (total, cash, card, online) for each batch.
+- [x] **Task 6.12.2: Card Dropdown Selector.** Add a dropdown to the subtitle of the "Contrôle des montants" card to select a specific TikTak file. Update the card KPIs to dynamically reflect the selected file's data.
+- [x] **Task 6.12.3: Grand Total Footer.** Add a footer row to the bottom of the "Contrôle des montants" card that displays the sum of all imported files (Grand Total).
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

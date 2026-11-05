@@ -60,25 +60,31 @@ export const listMarkets = query({
           .filter((q) => q.eq(q.field('isActive'), true))
           .collect();
 
-    // Calculate unique rider count per market from both orders and liveEntries
+    // Calculate unique rider count and total revenue per market
     const marketIds = markets.map((m) => m._id);
     const riderCountMap = new Map<Id<'markets'>, number>();
+    const totalRevenueMap = new Map<Id<'markets'>, number>();
 
     // Initialize all markets with 0
     for (const marketId of marketIds) {
       riderCountMap.set(marketId, 0);
+      totalRevenueMap.set(marketId, 0);
     }
 
-    // Collect unique rider IDs from orders (riderId field)
+    // Collect unique rider IDs from orders and sum revenue per market
     const ordersRidersMap = new Map<Id<'markets'>, Set<Id<'riders'>>>();
     for (const marketId of marketIds) {
       ordersRidersMap.set(marketId, new Set());
     }
 
+    // Use withIndex for performance on marketId
     const orders = await ctx.db.query('orders').collect();
     for (const order of orders) {
       if (order.marketId && ordersRidersMap.has(order.marketId)) {
         ordersRidersMap.get(order.marketId)!.add(order.riderId);
+        // Sum revenue (amount is in integer centimes)
+        const currentTotal = totalRevenueMap.get(order.marketId) ?? 0;
+        totalRevenueMap.set(order.marketId, currentTotal + order.amount);
       }
     }
 
@@ -103,13 +109,14 @@ export const listMarkets = query({
       riderCountMap.set(marketId, ordersRidersCount + liveEntriesRidersCount);
     }
 
-    // Add riderCount to each market
-    const marketsWithRiderCount = markets.map((market) => ({
+    // Add riderCount and totalRevenue to each market
+    const marketsWithStats = markets.map((market) => ({
       ...market,
       riderCount: riderCountMap.get(market._id) ?? 0,
+      totalRevenue: totalRevenueMap.get(market._id) ?? 0,
     }));
 
-    return marketsWithRiderCount.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+    return marketsWithStats.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
   },
 });
 

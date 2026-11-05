@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
+import type { Doc, Id } from '@convex/_generated/dataModel';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatMAD, formatShortDate } from '@/lib/format';
 import { dateInputToTimestamp, timestampToDateInputValue, todayDateInputValue } from '@/lib/dates';
@@ -15,6 +16,86 @@ import PendingDeposits from './PendingDeposits';
 const DEFAULT_RANGE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 15;
+
+type ImportBatchWithBreakdown = Doc<'importBatches'> & {
+  breakdown: {
+    totalAmount: number;
+    cashAmount: number;
+    cardAmount: number;
+    onlineAmount: number;
+  };
+};
+
+interface AmountControlCardProps {
+  importBatches: ImportBatchWithBreakdown[];
+  selectedBatchId: Id<'importBatches'> | null;
+  onSelectedBatchChange: (batchId: Id<'importBatches'>) => void;
+}
+
+function AmountControlCard({
+  importBatches,
+  selectedBatchId,
+  onSelectedBatchChange,
+}: AmountControlCardProps) {
+  const selectedBatch = importBatches.find((batch) => batch._id === selectedBatchId);
+  const breakdown = selectedBatch?.breakdown;
+  const grandTotal = importBatches.reduce(
+    (total, batch) => total + batch.breakdown.totalAmount,
+    0
+  );
+
+  return (
+    <section className="panel">
+      <header className="panel-head">
+        <div>
+          <h2>Contrôle des montants</h2>
+          <div className="field panel-sub">
+            <select
+              id="amount-control-batch"
+              aria-label="Sélectionner un fichier TikTak"
+              value={selectedBatchId ?? ''}
+              onChange={(event) =>
+                onSelectedBatchChange(event.target.value as Id<'importBatches'>)
+              }
+              disabled={importBatches.length === 0}
+            >
+              {importBatches.length === 0 ? (
+                <option value="">Aucun fichier importé</option>
+              ) : null}
+              {importBatches.map((batch) => (
+                <option key={batch._id} value={batch._id}>
+                  {batch.attachmentName}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </header>
+      <dl className="metric-list">
+        <div className="metric-row">
+          <dt>Cash éligible</dt>
+          <dd className="amount">{formatMAD(breakdown?.cashAmount ?? 0)}</dd>
+        </div>
+        <div className="metric-row">
+          <dt>Carte éligible</dt>
+          <dd className="amount">{formatMAD(breakdown?.cardAmount ?? 0)}</dd>
+        </div>
+        <div className="metric-row">
+          <dt>Paiement en ligne exclu</dt>
+          <dd className="amount">{formatMAD(breakdown?.onlineAmount ?? 0)}</dd>
+        </div>
+        <div className="metric-row is-subtotal">
+          <dt>Total de ce fichier</dt>
+          <dd className="amount">{formatMAD(breakdown?.totalAmount ?? 0)}</dd>
+        </div>
+        <div className="metric-row is-total is-grand-total">
+          <dt>Total Général (Tous les fichiers)</dt>
+          <dd className="amount">{formatMAD(grandTotal)}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
 
 function readDateParam(searchParams: URLSearchParams, key: string): string | null {
   const value = searchParams.get(key);
@@ -36,6 +117,7 @@ export default function AdminDashboard() {
   const [riderSearch, setRiderSearch] = useState('');
   const [remainingSort, setRemainingSort] = useState<'desc' | 'asc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedBatchId, setSelectedBatchId] = useState<Id<'importBatches'> | null>(null);
 
   const fromTimestamp = dateInputToTimestamp(range.from);
   const toTimestamp = dateInputToTimestamp(range.to);
@@ -44,6 +126,18 @@ export default function AdminDashboard() {
     fromDate: fromTimestamp ?? undefined,
     toDate: toTimestamp ?? undefined,
   });
+  const importBatches = useQuery(api.imports.getImportBatches, { limit: 200 });
+
+  useEffect(() => {
+    if (importBatches === undefined) return;
+
+    setSelectedBatchId((currentBatchId) => {
+      const selectionStillExists = importBatches.some(
+        (batch) => batch._id === currentBatchId
+      );
+      return selectionStillExists ? currentBatchId : (importBatches[0]?._id ?? null);
+    });
+  }, [importBatches]);
 
   const filteredAndSortedRiders = useMemo(() => {
     if (!data?.riders) return [];
@@ -219,32 +313,11 @@ export default function AdminDashboard() {
       <ImportsPanel batches={recentBatches} conflictRows={imports.conflictRows} />
 
       <div className="split">
-        <section className="panel">
-          <header className="panel-head">
-            <div>
-              <h2>Contrôle des montants</h2>
-              <p className="panel-sub">Sommes par mode de paiement</p>
-            </div>
-          </header>
-          <dl className="metric-list">
-            <div className="metric-row">
-              <dt>Cash éligible</dt>
-              <dd className="amount">{formatMAD(totals.cashDue)}</dd>
-            </div>
-            <div className="metric-row">
-              <dt>Carte éligible</dt>
-              <dd className="amount">{formatMAD(totals.cardDue)}</dd>
-            </div>
-            <div className="metric-row">
-              <dt>Paiement en ligne exclu</dt>
-              <dd className="amount">{formatMAD(totals.onlinePaymentExcluded)}</dd>
-            </div>
-            <div className="metric-row is-total">
-              <dt>Total importé (TikTak)</dt>
-              <dd className="amount">{formatMAD(totals.totalImported)}</dd>
-            </div>
-          </dl>
-        </section>
+        <AmountControlCard
+          importBatches={importBatches ?? []}
+          selectedBatchId={selectedBatchId}
+          onSelectedBatchChange={setSelectedBatchId}
+        />
 
         <section className="panel">
           <header className="panel-head">

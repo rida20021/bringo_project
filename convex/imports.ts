@@ -1,7 +1,7 @@
 import { mutation, query, internalMutation, internalQuery } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
 import { v } from 'convex/values';
-import type { Id } from './_generated/dataModel';
+import type { Doc, Id } from './_generated/dataModel';
 import { requireAdmin, requireSupervisor } from './lib/auth';
 import { parseAmountToCentimes, parseTikTakDate } from './lib/tiktakValues';
 import { insertAuditEvent } from './audit';
@@ -368,14 +368,100 @@ export const processImportBatch = internalMutation({
   },
 });
 
+// Return type for import batches with calculated totals breakdown
+type ImportBatchWithTotal = Doc<'importBatches'> & {
+  breakdown: {
+    totalAmount: number;
+    cashAmount: number;
+    cardAmount: number;
+    onlineAmount: number;
+  };
+};
+
 export const getImportBatches = query({
   args: { limit: v.optional(v.number()) },
-  handler: async (ctx, args) => {
+  returns: v.array(v.object({
+    _id: v.id('importBatches'),
+    _creationTime: v.number(),
+    gmailMessageId: v.string(),
+    gmailHistoryId: v.optional(v.string()),
+    attachmentName: v.string(),
+    attachmentHash: v.string(),
+    reportDate: v.number(),
+    receivedAt: v.number(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    status: v.union(v.literal('pending'), v.literal('processing'), v.literal('completed'), v.literal('failed'), v.literal('needs_review')),
+    totalRows: v.number(),
+    acceptedRows: v.number(),
+    rejectedRows: v.number(),
+    duplicateRows: v.number(),
+    conflictRows: v.number(),
+    errorSummary: v.optional(v.string()),
+    storageId: v.optional(v.id('_storage')),
+    createdBy: v.optional(v.id('users')),
+    breakdown: v.object({
+      totalAmount: v.number(),
+      cashAmount: v.number(),
+      cardAmount: v.number(),
+      onlineAmount: v.number(),
+    }),
+  })),
+  handler: async (ctx, args): Promise<ImportBatchWithTotal[]> => {
     await requireAdmin(ctx);
-    return ctx.db
+    const batches = await ctx.db
       .query('importBatches')
       .order('desc')
       .take(Math.min(args.limit ?? 50, 200));
+
+    // Calculate totals breakdown per batch
+    const batchIds = batches.map((b) => b._id);
+    const breakdownMap = new Map<Id<'importBatches'>, {
+      totalAmount: number;
+      cashAmount: number;
+      cardAmount: number;
+      onlineAmount: number;
+    }>();
+
+    // Initialize all batches
+    for (const batchId of batchIds) {
+      breakdownMap.set(batchId, {
+        totalAmount: 0,
+        cashAmount: 0,
+        cardAmount: 0,
+        onlineAmount: 0,
+      });
+    }
+
+    // Sum amounts by payment method for each batch
+    const orders = await ctx.db.query('orders').collect();
+    for (const order of orders) {
+      if (breakdownMap.has(order.importBatchId)) {
+        const current = breakdownMap.get(order.importBatchId)!;
+        current.totalAmount += order.amount;
+        
+        if (order.paymentMethod === 'cash') {
+          current.cashAmount += order.amount;
+        } else if (order.paymentMethod === 'card') {
+          current.cardAmount += order.amount;
+        } else if (order.paymentMethod === 'online_payment') {
+          current.onlineAmount += order.amount;
+        }
+      }
+    }
+
+    // Add breakdown to each batch
+    const batchesWithTotals: ImportBatchWithTotal[] = batches.map((batch) => ({
+      ...batch,
+      breakdown: breakdownMap.get(batch._id) ?? {
+        totalAmount: 0,
+        cashAmount: 0,
+        cardAmount: 0,
+        onlineAmount: 0,
+      },
+    }));
+
+    return batchesWithTotals;
   },
 });
 

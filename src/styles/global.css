@@ -561,6 +561,18 @@ a {
   color: var(--red);
 }
 
+.metric-row.is-subtotal {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.metric-row.is-subtotal dt,
+.metric-row.is-subtotal dd {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .metric-row.is-total {
   margin-top: 4px;
   padding-top: 12px;
@@ -577,6 +589,11 @@ a {
 .metric-row.is-total dd {
   font-size: 15px;
   color: var(--primary);
+}
+
+.metric-row.is-grand-total {
+  margin-top: 6px;
+  border-top: 2px solid var(--primary);
 }
 
 .metric-count {
