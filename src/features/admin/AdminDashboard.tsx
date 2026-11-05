@@ -247,7 +247,6 @@ export default function AdminDashboard() {
         <button type="button" className="button-ghost" onClick={resetRange}>
           7 derniers jours
         </button>
-        <span className="page-tag">Administrateur</span>
       </div>
     </header>
   );

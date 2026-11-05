@@ -113,7 +113,6 @@ export default function SupervisorDashboard() {
             Aujourd’hui
           </button>
         ) : null}
-        <span className="page-tag">Superviseur</span>
       </div>
     </header>
   );
