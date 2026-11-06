@@ -126,7 +126,12 @@ export default function AdminDashboard() {
     fromDate: fromTimestamp ?? undefined,
     toDate: toTimestamp ?? undefined,
   });
-  const importBatches = useQuery(api.imports.getImportBatches, { limit: 200 });
+  const currentUser = useQuery(api.users.getCurrentUser);
+  const isAdmin = currentUser?.role === 'admin';
+  const importBatches = useQuery(
+    api.imports.getImportBatches,
+    isAdmin ? { limit: 200 } : 'skip'
+  );
 
   useEffect(() => {
     if (importBatches === undefined) return;
@@ -251,7 +256,7 @@ export default function AdminDashboard() {
     </header>
   );
 
-  if (data === undefined) {
+  if (data === undefined || currentUser === undefined) {
     return (
       <div className="page">
         {header}
@@ -301,23 +306,48 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      <ExcelImportPanel />
+      {isAdmin && <ExcelImportPanel />}
 
-      <DiscrepanciesPanel />
+      {isAdmin && <DiscrepanciesPanel />}
 
       <PendingReceipts />
 
       <PendingDeposits />
 
-      <ImportsPanel batches={recentBatches} conflictRows={imports.conflictRows} />
+      {isAdmin && <ImportsPanel batches={recentBatches} conflictRows={imports.conflictRows} />}
 
-      <div className="split">
-        <AmountControlCard
-          importBatches={importBatches ?? []}
-          selectedBatchId={selectedBatchId}
-          onSelectedBatchChange={setSelectedBatchId}
-        />
+      {isAdmin ? (
+        <div className="split">
+          <AmountControlCard
+            importBatches={importBatches ?? []}
+            selectedBatchId={selectedBatchId}
+            onSelectedBatchChange={setSelectedBatchId}
+          />
 
+          <section className="panel">
+            <header className="panel-head">
+              <div>
+                <h2>Preuves et dépôts</h2>
+                <p className="panel-sub">États cumulés de la période</p>
+              </div>
+            </header>
+            <dl className="metric-list">
+              <div className="metric-row">
+                <dt>Dépôts approuvés</dt>
+                <dd className="amount">{formatMAD(deposits.approved)}</dd>
+              </div>
+              <div className="metric-row">
+                <dt>Dépôts rejetés</dt>
+                <dd className="amount">{formatMAD(deposits.rejected)}</dd>
+              </div>
+              <div className="metric-row">
+                <dt>TPE rejeté</dt>
+                <dd className="amount">{formatMAD(tpeReceipts.rejected)}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      ) : (
         <section className="panel">
           <header className="panel-head">
             <div>
@@ -340,7 +370,7 @@ export default function AdminDashboard() {
             </div>
           </dl>
         </section>
-      </div>
+      )}
 
       <section className="panel">
         <header className="panel-head">
