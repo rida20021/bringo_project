@@ -26,6 +26,6 @@
 - [x] Run `npm run typecheck` & `npm run lint`.
 
 ### Phase 5: Final Review & Graph Re-run
-- [ ] Run OpenCode `reviewer` agent on the diffs.
+- [x] Run OpenCode `reviewer` agent on the diffs.
 - [ ] Run Graphify again.
 - [ ] Verify community cohesion has improved.
