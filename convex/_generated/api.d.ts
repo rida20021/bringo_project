@@ -20,7 +20,6 @@ import type * as evidence from "../evidence.js";
 import type * as excelImport from "../excelImport.js";
 import type * as http from "../http.js";
 import type * as imports from "../imports.js";
-import type * as index from "../index.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as lib_marketParser from "../lib/marketParser.js";
@@ -56,7 +55,6 @@ declare const fullApi: ApiFromModules<{
   excelImport: typeof excelImport;
   http: typeof http;
   imports: typeof imports;
-  index: typeof index;
   "lib/auth": typeof lib_auth;
   "lib/dates": typeof lib_dates;
   "lib/marketParser": typeof lib_marketParser;
