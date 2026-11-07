@@ -1,11 +1,21 @@
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
-import { convexTest } from 'convex-test';
 import { describe, expect, it } from 'vitest';
-import schema from '../schema';
 import { api } from '../_generated/api';
-import type { Id } from '../_generated/dataModel';
 import { endOfDayCasablanca, startOfDayCasablanca } from '../lib/dates';
+import {
+  addCollection,
+  addDeposit,
+  addLiveEntry,
+  addLiveTpeReceipt,
+  addOrder,
+  addTpe,
+  adminClient,
+  makeT,
+  seedWorld,
+  type T,
+  type World,
+} from './_helpers/world';
 
 const modules = import.meta.glob([
   '../**/*.ts',
@@ -14,227 +24,16 @@ const modules = import.meta.glob([
   '!../auth.config.ts',
   '!../http.ts',
   '!../index.ts',
+  '!../tests/_helpers/**/*.ts',
 ]);
 
 const DAY_A = startOfDayCasablanca(Date.UTC(2026, 9, 25, 12));
 const DAY_B = startOfDayCasablanca(Date.UTC(2026, 9, 26, 12));
 const DAY_C = startOfDayCasablanca(Date.UTC(2026, 9, 27, 12));
 
-type T = ReturnType<typeof makeT>;
-type DepositStatus = 'pending_review' | 'submitted' | 'approved' | 'rejected';
-type TpeStatus = 'pending_review' | 'approved' | 'rejected';
-
-function makeT() {
-  return convexTest({ schema, modules });
-}
-
-interface World {
-  adminId: Id<'users'>;
-  riderUserId: Id<'users'>;
-  riderId: Id<'riders'>;
-  marketId: Id<'markets'>;
-  batchId: Id<'importBatches'>;
-  sourceRowId: Id<'sourceRows'>;
-}
-
-async function createProfile(t: T, role: 'admin' | 'rider'): Promise<Id<'users'>> {
-  return t.run(async (ctx) => {
-    const userId = await ctx.db.insert('users', { email: `${role}@bringo.test` });
-    await ctx.db.insert('userProfiles', {
-      userId,
-      role,
-      displayName: role === 'admin' ? 'Admin Test' : 'Livreur Test',
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    return userId;
-  });
-}
-
-async function seedWorld(t: T): Promise<World> {
-  const adminId = await createProfile(t, 'admin');
-  const riderUserId = await createProfile(t, 'rider');
-
-  return t.run(async (ctx) => {
-    const marketId = await ctx.db.insert('markets', {
-      name: 'Marché Central',
-      externalId: 'MKT-1',
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    const riderId = await ctx.db.insert('riders', {
-      canonicalName: 'Livreur Test',
-      aliases: ['Livreur Test'],
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    const batchId = await ctx.db.insert('importBatches', {
-      gmailMessageId: 'msg-1',
-      attachmentName: 'Rapport_TIKTAK_2026-10-25.xlsx',
-      attachmentHash: 'hash-1',
-      reportDate: DAY_A,
-      receivedAt: Date.now(),
-      startedAt: Date.now(),
-      status: 'completed',
-      totalRows: 0,
-      acceptedRows: 0,
-      rejectedRows: 0,
-      duplicateRows: 0,
-      conflictRows: 0,
-    });
-
-    const sourceRowId = await ctx.db.insert('sourceRows', {
-      importBatchId: batchId,
-      originalRowNumber: 2,
-      originalData: {},
-      validationState: 'valid',
-    });
-
-    return { adminId, riderUserId, riderId, marketId, batchId, sourceRowId };
-  });
-}
-
-async function addOrder(
-  t: T,
-  world: World,
-  commandId: string,
-  amount: number,
-  deliveryDate: number,
-  paymentMethod: 'cash' | 'card' | 'online_payment' = 'cash'
-): Promise<Id<'orders'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('orders', {
-      commandId,
-      deliveryDate,
-      riderId: world.riderId,
-      rawRiderName: 'Livreur Test',
-      paymentMethod,
-      amount,
-      sourceRowId: world.sourceRowId,
-      importBatchId: world.batchId,
-      eligibilityStatus: 'eligible',
-      createdAt: Date.now(),
-    })
-  );
-}
-
-async function addCollection(
-  t: T,
-  world: World,
-  amount: number,
-  sourceReportDate: number,
-  collectedAt: number
-): Promise<Id<'cashCollections'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('cashCollections', {
-      riderId: world.riderId,
-      amount,
-      collectedAt,
-      collectedBy: world.adminId,
-      sourceReportDate,
-      isReversal: false,
-      createdAt: Date.now(),
-    })
-  );
-}
-
-async function addDeposit(
-  t: T,
-  world: World,
-  amount: number,
-  depositDate: number,
-  status: DepositStatus
-): Promise<Id<'bankDeposits'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('bankDeposits', {
-      amount,
-      depositDate,
-      depositedBy: world.adminId,
-      status,
-      evidenceStorageIds: [],
-      createdAt: Date.now(),
-    })
-  );
-}
-
-async function addTpe(
-  t: T,
-  world: World,
-  amount: number,
-  receiptDate: number,
-  status: TpeStatus
-): Promise<Id<'tpeReceipts'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('tpeReceipts', {
-      claimedAmount: amount,
-      receiptDate,
-      uploadedBy: world.adminId,
-      status,
-      evidenceStorageIds: [],
-      createdAt: Date.now(),
-    })
-  );
-}
-
-async function addLiveEntry(
-  t: T,
-  world: World,
-  commandId: string,
-  amount: number,
-  entryDate: number,
-  paymentMethod: 'cash' | 'tpe' | 'card' = 'tpe'
-): Promise<Id<'liveEntries'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('liveEntries', {
-      riderUserId: world.riderUserId,
-      commandId,
-      commandKey: commandId.trim().toLowerCase(),
-      marketId: world.marketId,
-      marketName: 'Marché Central',
-      marketExternalId: 'MKT-1',
-      amount,
-      paymentMethod,
-      entryDate,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    })
-  );
-}
-
-async function addLiveTpeReceipt(
-  t: T,
-  world: World,
-  liveEntryId: Id<'liveEntries'>,
-  status: TpeStatus
-): Promise<Id<'liveEntryReceipts'>> {
-  return t.run(async (ctx) => {
-    const storageId = await ctx.storage.store(new Blob(['receipt'], { type: 'image/png' }));
-    return ctx.db.insert('liveEntryReceipts', {
-      liveEntryId,
-      riderUserId: world.riderUserId,
-      kind: 'tpe',
-      storageId,
-      fileName: 'ticket.png',
-      mimeType: 'image/png',
-      size: 7,
-      status,
-      createdAt: Date.now(),
-    });
-  });
-}
-
-function adminClient(t: T, world: World) {
-  return t.withIdentity({ subject: world.adminId, email: 'admin@bringo.test' });
-}
-
 /** Seeds two full business days (A and B) plus an out-of-range order on C. */
 async function seedMultiDay(t: T): Promise<World> {
-  const world = await seedWorld(t);
+  const world = await seedWorld(t, DAY_A);
 
   await addOrder(t, world, 'A-CASH', 1000, DAY_A);
   await addOrder(t, world, 'A-CARD', 2000, DAY_A, 'card');
@@ -256,7 +55,7 @@ async function seedMultiDay(t: T): Promise<World> {
 
 describe('getSupervisorDashboardData', () => {
   it('returns the KPIs for the requested report date only', async () => {
-    const t = makeT();
+    const t = makeT(modules);
     const world = await seedMultiDay(t);
 
     const data = await adminClient(t, world).query(
@@ -287,8 +86,8 @@ describe('getSupervisorDashboardData', () => {
   });
 
   it('defaults to the current Casablanca day when reportDate is omitted', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
     const today = startOfDayCasablanca(Date.now());
 
     await addOrder(t, world, 'TODAY-CASH', 12345, today);
@@ -305,8 +104,8 @@ describe('getSupervisorDashboardData', () => {
   });
 
   it('counts approved deposits registered at any time of the Casablanca day', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addOrder(t, world, 'DAY-CASH', 5000, DAY_A);
     await addCollection(t, world, 5000, DAY_A, DAY_A);
@@ -336,7 +135,7 @@ describe('getSupervisorDashboardData', () => {
   });
 
   it('resolves a UTC instant near midnight to the Casablanca day', async () => {
-    const t = makeT();
+    const t = makeT(modules);
     const world = await seedMultiDay(t);
     const admin = adminClient(t, world);
 
@@ -358,8 +157,8 @@ describe('getSupervisorDashboardData', () => {
 
 describe('TPE approval KPIs', () => {
   it('counts an approved rider TPE receipt when its command matches a card order', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addOrder(t, world, 'CMD-TPE', 2500, DAY_A, 'card');
     const entry = await addLiveEntry(t, world, 'CMD-TPE', 2500, DAY_A, 'tpe');
@@ -388,8 +187,8 @@ describe('TPE approval KPIs', () => {
   });
 
   it('exposes pending rider TPE receipts and ignores unmatched approvals', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addOrder(t, world, 'MATCHED', 1200, DAY_A, 'card');
     const matched = await addLiveEntry(t, world, 'MATCHED', 1200, DAY_A, 'tpe');
@@ -415,7 +214,7 @@ describe('TPE approval KPIs', () => {
 
 describe('getAdminDashboardData', () => {
   it('filters every KPI to the requested inclusive range', async () => {
-    const t = makeT();
+    const t = makeT(modules);
     const world = await seedMultiDay(t);
 
     const data = await adminClient(t, world).query(api.reconciliation.getAdminDashboardData, {
@@ -449,7 +248,7 @@ describe('getAdminDashboardData', () => {
   });
 
   it('swaps an inverted range instead of returning an empty dashboard', async () => {
-    const t = makeT();
+    const t = makeT(modules);
     const world = await seedMultiDay(t);
 
     const data = await adminClient(t, world).query(api.reconciliation.getAdminDashboardData, {
@@ -462,8 +261,8 @@ describe('getAdminDashboardData', () => {
   });
 
   it('defaults to the last seven days when no range is provided', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
     const today = startOfDayCasablanca(Date.now());
     const thirtyDaysAgo = startOfDayCasablanca(Date.now() - 30 * 24 * 60 * 60 * 1000);
 

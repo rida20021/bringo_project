@@ -1,11 +1,16 @@
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
-import { convexTest } from 'convex-test';
 import { describe, expect, it } from 'vitest';
-import schema from '../schema';
 import { api } from '../_generated/api';
-import type { Id } from '../_generated/dataModel';
 import { startOfDayCasablanca } from '../lib/dates';
+import {
+  addLiveEntry,
+  addOrder,
+  adminClient,
+  makeT,
+  seedWorld,
+  type T,
+} from './_helpers/world';
 
 const modules = import.meta.glob([
   '../**/*.ts',
@@ -14,149 +19,16 @@ const modules = import.meta.glob([
   '!../auth.config.ts',
   '!../http.ts',
   '!../index.ts',
+  '!../tests/_helpers/**/*.ts',
 ]);
-
-type T = ReturnType<typeof makeT>;
-type TestRole = 'supervisor' | 'admin' | 'rider';
 
 const DAY_A = startOfDayCasablanca(Date.UTC(2026, 9, 25, 12));
 const DAY_B = startOfDayCasablanca(Date.UTC(2026, 9, 26, 12));
 
-function makeT() {
-  return convexTest({ schema, modules });
-}
-
-async function createProfile(t: T, role: TestRole): Promise<Id<'users'>> {
-  const displayName = role === 'rider' ? 'Livreur Test' : `${role} Test`;
-  return t.run(async (ctx) => {
-    const userId = await ctx.db.insert('users', {
-      email: `${role}-${Math.random()}@bringo.test`,
-    });
-    await ctx.db.insert('userProfiles', {
-      userId,
-      role,
-      displayName,
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-    return userId;
-  });
-}
-
-interface World {
-  adminId: Id<'users'>;
-  riderUserId: Id<'users'>;
-  marketId: Id<'markets'>;
-  batchId: Id<'importBatches'>;
-  sourceRowId: Id<'sourceRows'>;
-  riderRecordId: Id<'riders'>;
-}
-
-async function seedWorld(t: T): Promise<World> {
-  const adminId = await createProfile(t, 'admin');
-  const riderUserId = await createProfile(t, 'rider');
-
-  return t.run(async (ctx) => {
-    const marketId = await ctx.db.insert('markets', {
-      name: 'Marché Central',
-      externalId: `MKT-${Math.random()}`,
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    const riderRecordId = await ctx.db.insert('riders', {
-      canonicalName: 'Livreur Test',
-      aliases: ['Livreur Test'],
-      isActive: true,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    const batchId = await ctx.db.insert('importBatches', {
-      gmailMessageId: `msg-${Math.random()}`,
-      attachmentName: 'Rapport_TIKTAK_2026-10-25.xlsx',
-      attachmentHash: `hash-${Math.random()}`,
-      reportDate: DAY_A,
-      receivedAt: Date.now(),
-      startedAt: Date.now(),
-      status: 'completed',
-      totalRows: 0,
-      acceptedRows: 0,
-      rejectedRows: 0,
-      duplicateRows: 0,
-      conflictRows: 0,
-    });
-
-    const sourceRowId = await ctx.db.insert('sourceRows', {
-      importBatchId: batchId,
-      originalRowNumber: 2,
-      originalData: {},
-      validationState: 'valid',
-    });
-
-    return { adminId, riderUserId, marketId, batchId, sourceRowId, riderRecordId };
-  });
-}
-
-async function addOrder(
-  t: T,
-  world: World,
-  commandId: string,
-  amount: number,
-  deliveryDate = DAY_A,
-  paymentMethod: 'cash' | 'card' | 'online_payment' = 'cash'
-): Promise<Id<'orders'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('orders', {
-      commandId,
-      deliveryDate,
-      riderId: world.riderRecordId,
-      rawRiderName: 'Livreur Test',
-      paymentMethod,
-      amount,
-      sourceRowId: world.sourceRowId,
-      importBatchId: world.batchId,
-      eligibilityStatus: 'eligible',
-      createdAt: Date.now(),
-    })
-  );
-}
-
-async function addLiveEntry(
-  t: T,
-  world: World,
-  commandId: string,
-  amount: number,
-  entryDate = DAY_A,
-  paymentMethod: 'cash' | 'tpe' | 'card' = 'cash'
-): Promise<Id<'liveEntries'>> {
-  return t.run(async (ctx) =>
-    ctx.db.insert('liveEntries', {
-      riderUserId: world.riderUserId,
-      commandId,
-      commandKey: commandId.trim().toLowerCase(),
-      marketId: world.marketId,
-      marketName: 'Marché Central',
-      marketExternalId: 'MKT-1',
-      amount,
-      paymentMethod,
-      entryDate,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    })
-  );
-}
-
-function adminClient(t: T, world: World) {
-  return t.withIdentity({ subject: world.adminId, email: 'admin@bringo.test' });
-}
-
 describe('matching engine', () => {
   it('classifies matched, mismatched and missing commands', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addLiveEntry(t, world, 'CMD-001', 37504);
     await addOrder(t, world, 'CMD-001', 37504);
@@ -205,8 +77,8 @@ describe('matching engine', () => {
   });
 
   it('sums split-payment legs and links a mismatch to the method-matching leg', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addLiveEntry(t, world, 'CMD-SPLIT-MATCH', 15000);
     await addOrder(t, world, 'CMD-SPLIT-MATCH', 10000, DAY_A, 'cash');
@@ -247,8 +119,8 @@ describe('matching engine', () => {
   });
 
   it('never creates a discrepancy for an Excel order without a live entry', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
     await addOrder(t, world, 'CMD-ONLY-EXCEL', 9000);
 
     const admin = adminClient(t, world);
@@ -266,8 +138,8 @@ describe('matching engine', () => {
   });
 
   it('is idempotent across repeated runs', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addLiveEntry(t, world, 'CMD-002', 5000);
     await addOrder(t, world, 'CMD-002', 4000);
@@ -295,7 +167,7 @@ describe('matching engine', () => {
 
 describe('discrepancy resolution', () => {
   async function seedTwoDiscrepancies(t: T) {
-    const world = await seedWorld(t);
+    const world = await seedWorld(t, DAY_A);
     await addLiveEntry(t, world, 'CMD-002', 5000);
     await addOrder(t, world, 'CMD-002', 4000);
     await addLiveEntry(t, world, 'CMD-003', 2000);
@@ -307,7 +179,7 @@ describe('discrepancy resolution', () => {
   }
 
   it('rejects empty, whitespace-only and over-long notes', async () => {
-    const t = makeT();
+    const t = makeT(modules);
     const { admin, rows } = await seedTwoDiscrepancies(t);
     const target = rows[0];
 
@@ -334,7 +206,7 @@ describe('discrepancy resolution', () => {
   });
 
   it('resolves a discrepancy and updates stats without reopening it', async () => {
-    const t = makeT();
+    const t = makeT(modules);
     const { admin, rows } = await seedTwoDiscrepancies(t);
     const target = rows.find((row) => row.reason === 'amount_mismatch')!;
 
@@ -383,8 +255,8 @@ describe('discrepancy resolution', () => {
 
 describe('discrepancy authorization', () => {
   it('blocks riders from matching, listing, stats and resolution', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
     await addLiveEntry(t, world, 'CMD-003', 2000);
 
     const admin = adminClient(t, world);
@@ -419,8 +291,8 @@ describe('discrepancy authorization', () => {
   });
 
   it('lets only active admins read stats and lists', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     const admin = adminClient(t, world);
     expect(await admin.query(api.discrepancies.getDiscrepancyStats, {})).toEqual({
@@ -435,8 +307,8 @@ describe('discrepancy authorization', () => {
 
 describe('discrepancy listing scope', () => {
   it('scopes results to the requested report date and caps the limit', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
     const liveEntryId = await addLiveEntry(t, world, 'CMD-DAY-A', 1000);
 
     await t.run(async (ctx) => {
@@ -490,8 +362,8 @@ describe('discrepancy listing scope', () => {
   });
 
   it('does not match a live entry against an order from another day', async () => {
-    const t = makeT();
-    const world = await seedWorld(t);
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
 
     await addLiveEntry(t, world, 'CMD-CROSS-DAY', 3000, DAY_A);
     await addOrder(t, world, 'CMD-CROSS-DAY', 3000, DAY_B);

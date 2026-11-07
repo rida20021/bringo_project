@@ -34,6 +34,7 @@ import type * as reconciliation from "../reconciliation.js";
 import type * as riders from "../riders.js";
 import type * as search from "../search.js";
 import type * as settings from "../settings.js";
+import type * as tests__helpers_world from "../tests/_helpers/world.js";
 import type * as users from "../users.js";
 
 import type {
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   riders: typeof riders;
   search: typeof search;
   settings: typeof settings;
+  "tests/_helpers/world": typeof tests__helpers_world;
   users: typeof users;
 }>;
 
