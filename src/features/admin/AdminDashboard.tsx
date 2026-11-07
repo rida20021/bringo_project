@@ -1,119 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/_generated/api';
-import type { Doc, Id } from '@convex/_generated/dataModel';
+import type { Id } from '@convex/_generated/dataModel';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatMAD, formatShortDate } from '@/lib/format';
-import { dateInputToTimestamp, timestampToDateInputValue, todayDateInputValue } from '@/lib/dates';
+import { dateInputToTimestamp, todayDateInputValue } from '@/lib/dates';
+import { useDateRangeFilter } from '@/lib/hooks/useDateRangeFilter';
 import DiscrepanciesPanel from './DiscrepanciesPanel';
 import ExcelImportPanel from './ExcelImportPanel';
 import ImportsPanel from './ImportsPanel';
 import PendingReceipts from './PendingReceipts';
 import PendingDeposits from './PendingDeposits';
+import AmountControlCard from './dashboard/AmountControlCard';
+import DashboardKpis from './dashboard/DashboardKpis';
+import RiderBalancesTable from './dashboard/RiderBalancesTable';
 
-const DEFAULT_RANGE_DAYS = 7;
-const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 15;
 
-type ImportBatchWithBreakdown = Doc<'importBatches'> & {
-  breakdown: {
-    totalAmount: number;
-    cashAmount: number;
-    cardAmount: number;
-    onlineAmount: number;
-  };
-};
-
-interface AmountControlCardProps {
-  importBatches: ImportBatchWithBreakdown[];
-  selectedBatchId: Id<'importBatches'> | null;
-  onSelectedBatchChange: (batchId: Id<'importBatches'>) => void;
-}
-
-function AmountControlCard({
-  importBatches,
-  selectedBatchId,
-  onSelectedBatchChange,
-}: AmountControlCardProps) {
-  const selectedBatch = importBatches.find((batch) => batch._id === selectedBatchId);
-  const breakdown = selectedBatch?.breakdown;
-  const grandTotal = importBatches.reduce(
-    (total, batch) => total + batch.breakdown.totalAmount,
-    0
-  );
-
-  return (
-    <section className="panel">
-      <header className="panel-head">
-        <div>
-          <h2>Contrôle des montants</h2>
-          <div className="field panel-sub">
-            <select
-              id="amount-control-batch"
-              aria-label="Sélectionner un fichier TikTak"
-              value={selectedBatchId ?? ''}
-              onChange={(event) =>
-                onSelectedBatchChange(event.target.value as Id<'importBatches'>)
-              }
-              disabled={importBatches.length === 0}
-            >
-              {importBatches.length === 0 ? (
-                <option value="">Aucun fichier importé</option>
-              ) : null}
-              {importBatches.map((batch) => (
-                <option key={batch._id} value={batch._id}>
-                  {batch.attachmentName}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
-      <dl className="metric-list">
-        <div className="metric-row">
-          <dt>Cash éligible</dt>
-          <dd className="amount">{formatMAD(breakdown?.cashAmount ?? 0)}</dd>
-        </div>
-        <div className="metric-row">
-          <dt>Carte éligible</dt>
-          <dd className="amount">{formatMAD(breakdown?.cardAmount ?? 0)}</dd>
-        </div>
-        <div className="metric-row">
-          <dt>Paiement en ligne exclu</dt>
-          <dd className="amount">{formatMAD(breakdown?.onlineAmount ?? 0)}</dd>
-        </div>
-        <div className="metric-row is-subtotal">
-          <dt>Total de ce fichier</dt>
-          <dd className="amount">{formatMAD(breakdown?.totalAmount ?? 0)}</dd>
-        </div>
-        <div className="metric-row is-total is-grand-total">
-          <dt>Total Général (Tous les fichiers)</dt>
-          <dd className="amount">{formatMAD(grandTotal)}</dd>
-        </div>
-      </dl>
-    </section>
-  );
-}
-
-function readDateParam(searchParams: URLSearchParams, key: string): string | null {
-  const value = searchParams.get(key);
-  return value && dateInputToTimestamp(value) !== null ? value : null;
-}
-
-function initialRange(searchParams: URLSearchParams): { from: string; to: string } {
-  let from =
-    readDateParam(searchParams, 'from') ??
-    timestampToDateInputValue(Date.now() - DEFAULT_RANGE_DAYS * DAY_MS);
-  let to = readDateParam(searchParams, 'to') ?? todayDateInputValue();
-  if (from > to) [from, to] = [to, from];
-  return { from, to };
-}
-
 export default function AdminDashboard() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [range, setRange] = useState(() => initialRange(searchParams));
+  const { range, handleFromChange, handleToChange, resetRange } = useDateRangeFilter();
   const [riderSearch, setRiderSearch] = useState('');
   const [remainingSort, setRemainingSort] = useState<'desc' | 'asc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -161,51 +66,11 @@ export default function AdminDashboard() {
   }, [data?.riders, riderSearch, remainingSort]);
 
   const totalPages = Math.ceil(filteredAndSortedRiders.length / PAGE_SIZE);
-  const paginatedRiders = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredAndSortedRiders.slice(start, start + PAGE_SIZE);
-  }, [filteredAndSortedRiders, currentPage]);
 
   // Reset to the first page whenever the search query or sort order changes.
   useEffect(() => {
     setCurrentPage(1);
   }, [riderSearch, remainingSort]);
-
-  const persistRange = (next: { from: string; to: string }) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('from', next.from);
-    params.set('to', next.to);
-    setSearchParams(params, { replace: true });
-  };
-
-  const applyRange = (next: { from: string; to: string }) => {
-    setRange(next);
-    persistRange(next);
-  };
-
-  const handleFromChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    if (!value || dateInputToTimestamp(value) === null) return;
-    applyRange({ from: value, to: value > range.to ? value : range.to });
-  };
-
-  const handleToChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    if (!value || dateInputToTimestamp(value) === null) return;
-    applyRange({ from: value < range.from ? value : range.from, to: value });
-  };
-
-  const resetRange = () => {
-    const next = {
-      from: timestampToDateInputValue(Date.now() - DEFAULT_RANGE_DAYS * DAY_MS),
-      to: todayDateInputValue(),
-    };
-    setRange(next);
-    const params = new URLSearchParams(searchParams);
-    params.delete('from');
-    params.delete('to');
-    setSearchParams(params, { replace: true });
-  };
 
   const header = (
     <header className="page-head">
@@ -271,40 +136,13 @@ export default function AdminDashboard() {
     <div className="page">
       {header}
 
-      <section className="stat-grid" aria-label="Indicateurs clés">
-        <div className="stat">
-          <span className="stat-label">Cash dû</span>
-          <span className="stat-value">{formatMAD(totals.cashDue)}</span>
-          <span className="stat-meta">Commandes cash éligibles</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Carte due</span>
-          <span className="stat-value">{formatMAD(totals.cardDue)}</span>
-          <span className="stat-meta">Commandes carte éligibles</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Encaissements</span>
-          <span className="stat-value">{formatMAD(collections.total)}</span>
-          <span className="stat-meta">{collections.count} saisie(s)</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Dépôts à approuver</span>
-          <span className="stat-value">{formatMAD(deposits.submitted)}</span>
-          <span className="stat-meta">{deposits.countSubmitted} dépôt(s) en attente</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">TPE à approuver</span>
-          <span className="stat-value">{formatMAD(tpeReceipts.pending)}</span>
-          <span className="stat-meta">{tpeReceipts.countPending} preuve(s) en attente</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Rapports importés</span>
-          <span className="stat-value">{imports.totalBatches}</span>
-          <span className="stat-meta">
-            {imports.acceptedRows} ligne(s) acceptée(s) sur {imports.totalRows}
-          </span>
-        </div>
-      </section>
+      <DashboardKpis
+        totals={totals}
+        collections={collections}
+        deposits={deposits}
+        tpeReceipts={tpeReceipts}
+        imports={imports}
+      />
 
       {isAdmin && <ExcelImportPanel />}
 
@@ -372,130 +210,21 @@ export default function AdminDashboard() {
         </section>
       )}
 
-      <section className="panel">
-        <header className="panel-head">
-          <div>
-            <h2>Livreurs</h2>
-            <p className="panel-sub">Soldes de la période sélectionnée, cash et carte séparés</p>
-          </div>
-          <span className="panel-count">
-            {filteredAndSortedRiders.length}{' '}
-            {filteredAndSortedRiders.length === 1 ? 'livreur' : 'livreurs'}
-          </span>
-        </header>
-
-        <div className="field market-search">
-          <input
-            type="search"
-            value={riderSearch}
-            onChange={(event) => setRiderSearch(event.target.value)}
-            placeholder="Rechercher un livreur..."
-            autoComplete="off"
-            aria-label="Rechercher un livreur"
-          />
-        </div>
-
-        {data.riders.length === 0 ? (
-          <div className="empty">
-            <p className="empty-title">Aucun livreur sur la période</p>
-            <p className="empty-text">
-              Les soldes apparaîtront après l’import du rapport TIKTAK de cette période.
-            </p>
-          </div>
-        ) : filteredAndSortedRiders.length === 0 ? (
-          <div className="empty">
-            <p className="empty-title">Aucun livreur trouvé</p>
-            <p className="empty-text">Aucun livreur ne correspond à « {riderSearch} ».</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col">Livreur</th>
-                  <th scope="col" className="numeric">
-                    Cash dû
-                  </th>
-                  <th scope="col" className="numeric">
-                    Carte due
-                  </th>
-                  <th scope="col" className="numeric">
-                    Encaissé
-                  </th>
-                  <th
-                    scope="col"
-                    className="numeric"
-                    role="button"
-                    tabIndex={0}
-                    style={{ cursor: 'pointer', userSelect: 'none' }}
-                    onClick={() =>
-                      setRemainingSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setRemainingSort((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-                      }
-                    }}
-                    title="Trier par reste"
-                    aria-sort={remainingSort === 'desc' ? 'descending' : 'ascending'}
-                  >
-                    Reste {remainingSort === 'desc' ? '↓' : '↑'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedRiders.map((rider) => (
-                  <tr key={rider.riderId}>
-                    <td>
-                      {rider.riderUserId ? (
-                        <Link
-                          to={`/admin/riders/${rider.riderUserId}`}
-                          className="table-link"
-                        >
-                          {rider.name}
-                        </Link>
-                      ) : (
-                        rider.name
-                      )}
-                    </td>
-                    <td className="numeric amount">{formatMAD(rider.cashDue)}</td>
-                    <td className="numeric amount">{formatMAD(rider.cardDue)}</td>
-                    <td className="numeric amount">{formatMAD(rider.collected)}</td>
-                    <td className={`numeric amount${rider.remaining > 0 ? ' is-due' : ''}`}>
-                      {formatMAD(rider.remaining)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {totalPages > 1 ? (
-          <div className="pagination-controls">
-            <button
-              type="button"
-              className="button-ghost"
-              onClick={() => setCurrentPage((page) => page - 1)}
-              disabled={currentPage === 1}
-            >
-              ← Précédent
-            </button>
-            <span className="pagination-info">
-              Page {currentPage} sur {totalPages}
-            </span>
-            <button
-              type="button"
-              className="button-ghost"
-              onClick={() => setCurrentPage((page) => page + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Suivant →
-            </button>
-          </div>
-        ) : null}
-      </section>
+      <RiderBalancesTable
+        riders={data.riders}
+        filteredAndSortedRiders={filteredAndSortedRiders}
+        pagination={{
+          currentPage,
+          totalPages,
+          setCurrentPage,
+        }}
+        search={{
+          riderSearch,
+          setRiderSearch,
+          remainingSort,
+          setRemainingSort,
+        }}
+      />
 
       <p className="page-foot">
         {imports.duplicateRows} doublon(s) · {imports.rejectedRows} ligne(s) rejetée(s) sur la

@@ -18,12 +18,12 @@
 - [x] Run `npm run test`.
 
 ### Phase 4: Decompose `AdminDashboard.tsx`
-- [ ] Extract `useDateRangeFilter.ts` hook to `src/lib/hooks/`.
-- [ ] Extract `AmountControlCard.tsx` to `src/features/admin/dashboard/`.
-- [ ] Extract `DashboardKpis.tsx`.
-- [ ] Extract `RiderBalancesTable.tsx`.
-- [ ] Update `AdminDashboard.tsx` to use the new hook and components.
-- [ ] Run `npm run typecheck` & `npm run lint`.
+- [x] Extract `useDateRangeFilter.ts` hook to `src/lib/hooks/`.
+- [x] Extract `AmountControlCard.tsx` to `src/features/admin/dashboard/`.
+- [x] Extract `DashboardKpis.tsx`.
+- [x] Extract `RiderBalancesTable.tsx`.
+- [x] Update `AdminDashboard.tsx` to use the new hook and components.
+- [x] Run `npm run typecheck` & `npm run lint`.
 
 ### Phase 5: Final Review & Graph Re-run
 - [ ] Run OpenCode `reviewer` agent on the diffs.
