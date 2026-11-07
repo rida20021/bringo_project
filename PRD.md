@@ -17,8 +17,10 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 ## 4. Users and Permissions
 ### 4.1 Rider
 - Can log in via mobile web.
-- Can manually input: Command Number, Market (selected from a database), Amount, and Payment Method (`cash`, `tpe`, `card`).
+- **Market Assignment:** Only sees markets assigned to them by the Admin.
+- Can manually input: Command Number, Market (selected from assigned markets), Amount, and Payment Method (`cash`, `tpe`, `card`).
 - Can upload evidence: TPE receipt (immediate) or Bank Deposit receipt (when depositing cash).
+- **Notifications:** Receives in-app notifications for Command Rescue, rejected receipts, and market removals.
 - Cannot see the TikTak Excel files or other riders' data.
 
 ### 4.2 Supervisor
@@ -35,6 +37,12 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Manages the `markets` database, user roles, and bulk onboardings.
 - Can reset Rider passwords and view the Rider 360 profile.
 - Can write-off lost cash or approve short deposits.
+- **New Operations:** Manages rider payroll, cross-market settlements, system settings, and auto-approval thresholds.
+
+### 4.4 Dispatcher (New)
+- **Access:** Live entry dashboard and Command Rescue panel.
+- **Permissions:** Can search for stuck commands, select specific riders from that market, and send in-app rescue notifications.
+- **Restrictions:** Cannot view salaries, discrepancies, deposits, or system settings.
 
 ## 5. Scope
 ### In Scope
@@ -101,13 +109,22 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **Debt Visibility:** The Admin must be able to see every Rider's and Supervisor's current `debtBalance` in the Team (Équipe) page and the upcoming Rider 360 view.
 - **Midnight Grace Period:** Live entries submitted between 00:00 and 03:00 AM are automatically assigned to the previous day's `entryDate` to prevent timezone discrepancy errors.
 
+### 8.4 Locked Business Decisions (D1-D7)
+- **D1 (Salary Cycle):** Monthly (1st to last day). Admin can override `salaryCycleStartDay`. Mid-month starts prorate automatically.
+- **D2 (Daily Rate):** Admin-controlled on `userProfiles.dailyRate`. Not retroactive to generated periods.
+- **D3 (Deductions):** Auto-pulls unresolved `debtBalance` discrepancies during salary generation. Admin can edit before approval.
+- **D4 (Multiple Markets):** Riders can be assigned to many markets via the `riderMarkets` join table. 
+- **D5 (Command Rescue):** Admin/Dispatcher must manually select specific riders from the affected market (no broadcast).
+- **D6 (Settlements):** Cross-market offsets are fully reversible. Reversals create an audit trail entry and do not delete the original settlement.
+- **D7 (Auto-Approval):** Discrepancies below a configurable threshold (stored in `systemSettings`, default 2 MAD) are automatically approved by a background job.
+
 ## 9. Technical Direction & Branding
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS.
 - **Brand Colors:** 
   - Primary: `#4a397e` (Deep Purple)
   - Accent/Buttons: `#eab818` (Gold/Yellow)
 - **Backend:** Convex (DB, Auth, File Storage).
-- **Database Tables:** `users`, `userProfiles`, `markets`, `orders`, `liveEntries`, `liveEntryReceipts`, `cashCollections`, `bankDeposits`, `discrepancies`, `importBatches`, `auditEvents`.
+- **Database Tables:** `users`, `userProfiles`, `markets`, `orders`, `liveEntries`, `liveEntryReceipts`, `cashCollections`, `bankDeposits`, `discrepancies`, `importBatches`, `auditEvents`, `riderMarkets`, `commandRescueRequests`, `riderNotifications`, `salaryPeriods`, `salaryDeductions`, `settlements`, `systemSettings`.
 - **Email Ingestion:** Gmail API via Convex HTTP actions.
 
 ## 10. Acceptance Criteria

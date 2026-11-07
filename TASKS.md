@@ -130,3 +130,30 @@
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.
 - [ ] **Task 7.2: End-to-End Testing.** Test the full flow with real data.
 - [ ] **Task 7.3: Production Deployment.** Deploy to Convex and Vercel/Netlify.
+
+## Milestone 8: Rider Management & Command Rescue (Sprint 1)
+- [ ] **Task 8.1: Extended Rider Info.** Add `phone`, `cin`, `ice`, `motoPaperStorageId`, `rib`, `salaryPaymentMethod`, `dailyRate` to `userProfiles`. Build `<RiderInfoForm>` and `<MotoPaperUpload>`.
+- [ ] **Task 8.2: Admin Market Assignment.** Create `riderMarkets` table. Add `assignMarketsToRider`, `getRiderMarkets`, `getMyMarkets`. Build `<RiderMarketPicker>` in Équipe/Rider 360. Filter Rider live-entry dropdown by `getMyMarkets()`.
+- [ ] **Task 8.3: Command Rescue Backend.** Create `commandRescueRequests` and `riderNotifications` tables. Build `sendCommandRescue`, `acceptCommandRescue`, `cancelCommandRescue`.
+- [ ] **Task 8.4: Command Rescue UI.** Build `/admin/command-rescue` panel. Build `<NotificationBell>` in Rider sidebar and `/rider/notifications` page.
+
+## Milestone 9: HR & Payroll Engine (Sprint 2)
+- [ ] **Task 9.1: Payroll Schema.** Create `salaryPeriods` and `salaryDeductions` tables.
+- [ ] **Task 9.2: Payroll Generation.** Build `generateSalaryPeriod` (calculates unique days worked, applies `dailyRate`, auto-pulls unresolved `debtBalance`). Build `addDeduction`, `updateDeduction`, `removeDeduction`, `approveSalaryPeriod`.
+- [ ] **Task 9.3: Payroll UI.** Build `/admin/salaires` page with month/rider filters, status pills, and detail drawer for deduction editing.
+
+## Milestone 10: Excel Replacement & Financial Settings (Sprint 3)
+- [ ] **Task 10.1: Cross-Market Settlements.** Create `settlements` table. Build `createSettlement`, `reverseSettlement`, `listSettlements`, `getMarketBalance`. Build UI on Markets page.
+- [ ] **Task 10.2: Settings Page.** Create `systemSettings` table. Build `/admin/settings` for `salaryCycleStartDay`, `autoApprovalThresholdMad`, `midnightGracePeriodHours`.
+- [ ] **Task 10.3: Smart Auto-Approval.** Build background job (cron) to auto-approve discrepancies `< threshold` and matching receipts. Tag `autoApproved: true`.
+- [ ] **Task 10.4: Discrepancy Upgrades.** Add `type` (surplus/deficit), `cumulative`, `cumulativeSince` to `discrepancies`. Update UI badges and add "En attente de règlement" panel.
+
+## Milestone 11: Strategic Insights & Roles (Sprint 4)
+- [ ] **Task 11.1: Dispatcher Role.** Add `dispatcher` to `userProfiles.role`. Build `/dispatcher` route (Live entries + Command Rescue only).
+- [ ] **Task 11.2: Bringo Pulse Dashboard.** Build `/admin/pulse` with Recharts (time-series, heatmaps, rider performance, revenue).
+
+## Milestone 12: AI Copilot & Advanced Ops (Sprint 5 & 6)
+- [ ] **Task 12.1: Bringo Copilot.** Convex action to OpenAI/DeepSeek. Chat interface on Admin pages to query DB (e.g., "Why is Velodrome showing a 300 MAD discrepancy?").
+- [ ] **Task 12.2: Outbound Notifications.** Twilio/WhatsApp integration for rejected receipts and debt reminders.
+- [ ] **Task 12.3: Zones & Commission.** Add `zones` table and `commissionRate` fields.
+- [ ] **Task 12.4: Shift Scheduling.** Add `shifts` and `shiftBookings` tables for rider market bidding.

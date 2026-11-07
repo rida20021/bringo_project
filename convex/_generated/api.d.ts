@@ -10,6 +10,7 @@
 
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
+import type * as cleanup from "../cleanup.js";
 import type * as collections from "../collections.js";
 import type * as crons from "../crons.js";
 import type * as debt from "../debt.js";
@@ -46,6 +47,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   auth: typeof auth;
+  cleanup: typeof cleanup;
   collections: typeof collections;
   crons: typeof crons;
   debt: typeof debt;

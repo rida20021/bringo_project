@@ -27,5 +27,5 @@
 
 ### Phase 5: Final Review & Graph Re-run
 - [x] Run OpenCode `reviewer` agent on the diffs.
-- [ ] Run Graphify again.
-- [ ] Verify community cohesion has improved.
+- [x] Run Graphify again.
+- [x] Verify community cohesion has improved.
