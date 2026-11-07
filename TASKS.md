@@ -125,6 +125,7 @@
 - [x] **Task 6.12.1: Backend Import Breakdown.** Update the `getImportBatches` query to return the calculated totals (total, cash, card, online) for each batch.
 - [x] **Task 6.12.2: Card Dropdown Selector.** Add a dropdown to the subtitle of the "Contrôle des montants" card to select a specific TikTak file. Update the card KPIs to dynamically reflect the selected file's data.
 - [x] **Task 6.12.3: Grand Total Footer.** Add a footer row to the bottom of the "Contrôle des montants" card that displays the sum of all imported files (Grand Total).
+- [ ] **Task 6.12.4: CSV Export for Dashboard Reports.** Add a "Télécharger CSV" button to the "Contrôle des montants" panel and the "Livreurs" table. Generate a UTF-8 BOM CSV file containing the aggregated data for the selected date range.
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.
