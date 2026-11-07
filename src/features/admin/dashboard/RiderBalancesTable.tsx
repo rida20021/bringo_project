@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatMAD } from '@/lib/format';
+import { downloadCSV } from '@/lib/export';
 
 export interface RiderBalance {
   riderId: string;
@@ -36,17 +37,63 @@ export default function RiderBalancesTable({
   const { riderSearch, setRiderSearch, remainingSort, setRemainingSort } = search;
   const { currentPage, totalPages, setCurrentPage } = pagination;
 
+  const handleExport = () => {
+    const headers = ['Livreur', 'Cash dû (MAD)', 'Carte due (MAD)', 'Encaissé (MAD)', 'Reste (MAD)'];
+    
+    const rows = filteredAndSortedRiders.map((rider) => [
+      rider.name,
+      Number((rider.cashDue / 100).toFixed(2)),
+      Number((rider.cardDue / 100).toFixed(2)),
+      Number((rider.collected / 100).toFixed(2)),
+      Number((rider.remaining / 100).toFixed(2)),
+    ]);
+
+    const totals = filteredAndSortedRiders.reduce(
+      (acc, rider) => {
+        acc[1] += rider.cashDue;
+        acc[2] += rider.cardDue;
+        acc[3] += rider.collected;
+        acc[4] += rider.remaining;
+        return acc;
+      },
+      [0, 0, 0, 0, 0]
+    );
+
+    const totalRow = [
+      'Total',
+      Number((totals[1] / 100).toFixed(2)),
+      Number((totals[2] / 100).toFixed(2)),
+      Number((totals[3] / 100).toFixed(2)),
+      Number((totals[4] / 100).toFixed(2)),
+    ];
+
+    const filename = `Soldes_Livreurs_${new Date().toISOString().split('T')[0]}.csv`;
+    downloadCSV(filename, headers, [...rows, totalRow]);
+  };
+
   return (
     <section className="panel">
       <header className="panel-head">
-        <div>
-          <h2>Livreurs</h2>
-          <p className="panel-sub">Soldes de la période sélectionnée, cash et carte séparés</p>
+        <div className="flex items-center justify-between w-full">
+          <div>
+            <h2>Livreurs</h2>
+            <p className="panel-sub">Soldes de la période sélectionnée, cash et carte séparés</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              type="button" 
+              className="button-ghost" 
+              onClick={handleExport}
+              disabled={filteredAndSortedRiders.length === 0}
+            >
+              Télécharger CSV
+            </button>
+            <span className="panel-count">
+              {filteredAndSortedRiders.length}{' '}
+              {filteredAndSortedRiders.length === 1 ? 'livreur' : 'livreurs'}
+            </span>
+          </div>
         </div>
-        <span className="panel-count">
-          {filteredAndSortedRiders.length}{' '}
-          {filteredAndSortedRiders.length === 1 ? 'livreur' : 'livreurs'}
-        </span>
       </header>
 
       <div className="field market-search">

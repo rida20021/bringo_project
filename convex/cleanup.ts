@@ -21,7 +21,6 @@ export const nukeEverything = internalMutation({
     const report: Record<string, number> = {};
 
     for (const table of tablesToWipe) {
-      // @ts-ignore
       const records = await ctx.db.query(table).collect();
       report[table] = records.length;
       for (const record of records) {
