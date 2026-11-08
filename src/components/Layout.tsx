@@ -7,6 +7,7 @@ import { api } from '@convex/_generated/api';
 import {
   Calculator,
   ChevronDown,
+  Eye,
   HandCoins,
   LayoutDashboard,
   Menu,
@@ -177,7 +178,8 @@ export default function Layout() {
 
   if (isAdmin) {
     navItems.push(
-      { to: '/admin/dashboard', label: 'Vue d\'ensemble', icon: LayoutDashboard },
+      { to: '/admin/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+      { to: '/admin/overview', label: 'Vue d\'ensemble', icon: Eye },
       { to: '/admin/markets', label: 'Marchés', icon: Store },
       { to: '/admin/riders', label: 'Équipe', icon: Users },
       {

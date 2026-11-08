@@ -164,6 +164,10 @@
 
 - [x] **Task 6.15.1: Separate Admin & Supervisor Routing and Sidebar.** Fix `SupervisorRoute` in `App.tsx` using `ProtectedRoute` and update `navItems` in `Layout.tsx` for strict role separation.
 
+## Milestone 6.16: Admin Dashboard Restructuring
+
+- [x] **Task 6.16.1: Restructure Admin Dashboard & Sidebar.** Extract `<CashCircuitPanel />`, create new Admin Dashboard with Circuit Cash view, move old dashboard to `/admin/overview`, and update Admin sidebar navigation.
+
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

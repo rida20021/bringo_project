@@ -9,6 +9,7 @@ import SetupPage from './features/auth/SetupPage';
 import SupervisorDashboard from './features/supervisor/SupervisorDashboard';
 import SupervisorPage from './features/supervisor/SupervisorPage';
 import AdminDashboard from './features/admin/AdminDashboard';
+import AdminOverview from './features/admin/AdminOverview';
 import MarketsPage from './features/admin/MarketsPage';
 import RidersPage from './features/admin/RidersPage';
 import RiderDetailPage from './features/admin/RiderDetailPage';
@@ -114,6 +115,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="overview" element={<AdminOverview />} />
           <Route path="markets" element={<MarketsPage />} />
           <Route path="riders" element={<RidersPage />} />
           <Route path="riders/:riderId" element={<RiderDetailPage />} />
