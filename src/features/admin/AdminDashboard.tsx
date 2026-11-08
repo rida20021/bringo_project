@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   const [riderSearch, setRiderSearch] = useState('');
   const [remainingSort, setRemainingSort] = useState<'desc' | 'asc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedBatchId, setSelectedBatchId] = useState<Id<'importBatches'> | null>(null);
+  const [selectedBatchIds, setSelectedBatchIds] = useState<Id<'importBatches'>[]>([]);
 
   const fromTimestamp = dateInputToTimestamp(range.from);
   const toTimestamp = dateInputToTimestamp(range.to);
@@ -41,11 +41,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (importBatches === undefined) return;
 
-    setSelectedBatchId((currentBatchId) => {
-      const selectionStillExists = importBatches.some(
-        (batch) => batch._id === currentBatchId
-      );
-      return selectionStillExists ? currentBatchId : (importBatches[0]?._id ?? null);
+    setSelectedBatchIds((currentIds) => {
+      const validIds = new Set(importBatches.map((batch) => batch._id));
+      const stillValidIds = currentIds.filter((id) => validIds.has(id));
+      return stillValidIds.length > 0
+        ? stillValidIds
+        : (importBatches[0] ? [importBatches[0]._id] : []);
     });
   }, [importBatches]);
 
@@ -158,8 +159,8 @@ export default function AdminDashboard() {
         <div className="split">
           <AmountControlCard
             importBatches={importBatches ?? []}
-            selectedBatchId={selectedBatchId}
-            onSelectedBatchChange={setSelectedBatchId}
+            selectedBatchIds={selectedBatchIds}
+            onSelectedBatchIdsChange={setSelectedBatchIds}
           />
 
           <section className="panel">

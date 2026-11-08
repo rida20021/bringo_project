@@ -13,6 +13,7 @@ import MarketsPage from './features/admin/MarketsPage';
 import RidersPage from './features/admin/RidersPage';
 import RiderDetailPage from './features/admin/RiderDetailPage';
 import RiderHome from './features/rider/RiderHome';
+import FinancialReportPage from './features/admin/reports/FinancialReportPage';
 import NotFound from './components/NotFound';
 
 type Role = 'supervisor' | 'admin' | 'rider';
@@ -51,7 +52,7 @@ function ProtectedRoute({
 }
 
 function SupervisorRoute({ children }: { children: React.ReactNode }) {
-  return <ProtectedRoute allowedRoles={['supervisor', 'admin']}>{children}</ProtectedRoute>;
+  return <ProtectedRoute allowedRoles={['supervisor']}>{children}</ProtectedRoute>;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -106,16 +107,18 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
-            <SupervisorRoute>
+            <AdminRoute>
               <Outlet />
-            </SupervisorRoute>
+            </AdminRoute>
           }
         >
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="markets" element={<AdminRoute><MarketsPage /></AdminRoute>} />
-          <Route path="riders" element={<AdminRoute><RidersPage /></AdminRoute>} />
-          <Route path="riders/:riderId" element={<AdminRoute><RiderDetailPage /></AdminRoute>} />
+          <Route path="markets" element={<MarketsPage />} />
+          <Route path="riders" element={<RidersPage />} />
+          <Route path="riders/:riderId" element={<RiderDetailPage />} />
+          <Route path="reports/riders" element={<RidersPage />} />
+          <Route path="reports/financials" element={<FinancialReportPage />} />
         </Route>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />

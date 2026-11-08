@@ -27,9 +27,11 @@ export default function SupervisorDashboard() {
     dateInputToTimestamp(selectedDate) ?? dateInputToTimestamp(todayDateInputValue())!;
   const isToday = selectedDate === todayDateInputValue();
 
-  const data = useQuery(api.reconciliation.getSupervisorDashboardData, {
-    reportDate: reportTimestamp,
-  });
+  const currentUser = useQuery(api.users.getCurrentUser);
+  const data = useQuery(
+    api.reconciliation.getSupervisorDashboardData,
+    currentUser?.role === 'supervisor' ? { reportDate: reportTimestamp } : 'skip'
+  );
 
   const filteredAndSortedRiders = useMemo(() => {
     if (!data?.riders) return [];
@@ -117,7 +119,7 @@ export default function SupervisorDashboard() {
     </header>
   );
 
-  if (data === undefined) {
+  if (currentUser === undefined || data === undefined) {
     return (
       <div className="page">
         {header}

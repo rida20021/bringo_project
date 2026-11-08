@@ -1,8 +1,11 @@
+import { useCallback, useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 import { formatMAD } from '@/lib/format';
 import { downloadCSV } from '@/lib/export';
 import type { Doc, Id } from '@convex/_generated/dataModel';
+import FileSelectionModal from './FileSelectionModal';
 
-type ImportBatchWithBreakdown = Doc<'importBatches'> & {
+export type ImportBatchWithBreakdown = Doc<'importBatches'> & {
   breakdown: {
     totalAmount: number;
     cashAmount: number;
@@ -13,18 +16,33 @@ type ImportBatchWithBreakdown = Doc<'importBatches'> & {
 
 interface AmountControlCardProps {
   importBatches: ImportBatchWithBreakdown[];
-  selectedBatchId: Id<'importBatches'> | null;
-  onSelectedBatchChange: (batchId: Id<'importBatches'>) => void;
+  selectedBatchIds: Id<'importBatches'>[];
+  onSelectedBatchIdsChange: (ids: Id<'importBatches'>[]) => void;
 }
 
 export default function AmountControlCard({
   importBatches,
-  selectedBatchId,
-  onSelectedBatchChange,
+  selectedBatchIds,
+  onSelectedBatchIdsChange,
 }: AmountControlCardProps) {
-  const selectedBatch = importBatches.find((batch) => batch._id === selectedBatchId);
-  const breakdown = selectedBatch?.breakdown;
-  const grandTotal = importBatches.reduce(
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const closeModal = useCallback(() => setIsModalOpen(false), []);
+
+  const selectedBatchIdsSet = new Set(selectedBatchIds);
+  const selectedBatches = importBatches.filter((batch) =>
+    selectedBatchIdsSet.has(batch._id),
+  );
+
+  const breakdown = selectedBatches.reduce(
+    (acc, batch) => ({
+      totalAmount: acc.totalAmount + batch.breakdown.totalAmount,
+      cashAmount: acc.cashAmount + batch.breakdown.cashAmount,
+      cardAmount: acc.cardAmount + batch.breakdown.cardAmount,
+      onlineAmount: acc.onlineAmount + batch.breakdown.onlineAmount,
+    }),
+    { totalAmount: 0, cashAmount: 0, cardAmount: 0, onlineAmount: 0 },
+  );
+  const grandTotal = selectedBatches.reduce(
     (total, batch) => total + batch.breakdown.totalAmount,
     0
   );
@@ -39,7 +57,7 @@ export default function AmountControlCard({
       'Total Fichier (MAD)',
     ];
 
-    const rows = importBatches.map((batch) => [
+    const rows = selectedBatches.map((batch) => [
       batch.attachmentName,
       new Date(batch.reportDate).toISOString().split('T')[0],
       Number((batch.breakdown.cashAmount / 100).toFixed(2)),
@@ -48,7 +66,7 @@ export default function AmountControlCard({
       Number((batch.breakdown.totalAmount / 100).toFixed(2)),
     ]);
 
-    const totals = importBatches.reduce(
+    const totals = selectedBatches.reduce(
       (acc, batch) => {
         acc[2] += batch.breakdown.cashAmount;
         acc[3] += batch.breakdown.cardAmount;
@@ -72,36 +90,41 @@ export default function AmountControlCard({
     downloadCSV(filename, headers, [...rows, grandTotalRow]);
   };
 
+  const handleOpenReport = () => {
+    const fileIds = selectedBatchIds.join(',');
+    window.open(`/admin/reports/financials?fileIds=${fileIds}`, '_blank');
+  };
+
   return (
     <section className="panel">
-      <header className="panel-head">
-        <div className="flex items-center justify-between w-full">
-          <div>
-            <h2>Contrôle des montants</h2>
-            <div className="field panel-sub">
-              <select
-                id="amount-control-batch"
-                aria-label="Sélectionner un fichier TikTak"
-                value={selectedBatchId ?? ''}
-                onChange={(event) =>
-                  onSelectedBatchChange(event.target.value as Id<'importBatches'>)
-                }
-                disabled={importBatches.length === 0}
-              >
-                {importBatches.length === 0 ? (
-                  <option value="">Aucun fichier importé</option>
-                ) : null}
-                {importBatches.map((batch) => (
-                  <option key={batch._id} value={batch._id}>
-                    {batch.attachmentName}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <header className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+        <div>
+          <h2>Contrôle des montants</h2>
+          <div className="field panel-sub">
+            <button
+              type="button"
+              className="button-ghost"
+              onClick={() => setIsModalOpen(true)}
+              disabled={importBatches.length === 0}
+            >
+              Sélectionner les fichiers ({selectedBatchIds.length})
+            </button>
           </div>
-          <button 
-            type="button" 
-            className="button-ghost" 
+        </div>
+        <div className="panel-head-actions">
+          <button
+            type="button"
+            className="button-ghost"
+            onClick={handleOpenReport}
+            disabled={importBatches.length === 0}
+            title="Ouvrir dans une nouvelle page"
+            aria-label="Ouvrir dans une nouvelle page"
+          >
+            <ExternalLink size={14} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="button-ghost"
             onClick={handleExport}
             disabled={importBatches.length === 0}
           >
@@ -112,25 +135,35 @@ export default function AmountControlCard({
       <dl className="metric-list">
         <div className="metric-row">
           <dt>Cash éligible</dt>
-          <dd className="amount">{formatMAD(breakdown?.cashAmount ?? 0)}</dd>
+          <dd className="amount">{formatMAD(breakdown.cashAmount)}</dd>
         </div>
         <div className="metric-row">
           <dt>Carte éligible</dt>
-          <dd className="amount">{formatMAD(breakdown?.cardAmount ?? 0)}</dd>
+          <dd className="amount">{formatMAD(breakdown.cardAmount)}</dd>
         </div>
         <div className="metric-row">
           <dt>Paiement en ligne exclu</dt>
-          <dd className="amount">{formatMAD(breakdown?.onlineAmount ?? 0)}</dd>
+          <dd className="amount">{formatMAD(breakdown.onlineAmount)}</dd>
         </div>
         <div className="metric-row is-subtotal">
-          <dt>Total de ce fichier</dt>
-          <dd className="amount">{formatMAD(breakdown?.totalAmount ?? 0)}</dd>
+          <dt>Total de la sélection</dt>
+          <dd className="amount">{formatMAD(breakdown.totalAmount)}</dd>
         </div>
         <div className="metric-row is-total is-grand-total">
-          <dt>Total Général (Tous les fichiers)</dt>
+          <dt>Total Général</dt>
           <dd className="amount">{formatMAD(grandTotal)}</dd>
         </div>
       </dl>
+
+      {isModalOpen ? (
+        <FileSelectionModal
+          isOpen
+          onClose={closeModal}
+          importBatches={importBatches}
+          selectedIds={selectedBatchIds}
+          onApply={onSelectedBatchIdsChange}
+        />
+      ) : null}
     </section>
   );
 }

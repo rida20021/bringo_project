@@ -145,6 +145,25 @@
 - [x] **Task 6.12.3: Grand Total Footer.** Add a footer row to the bottom of the "Contrôle des montants" card that displays the sum of all imported files (Grand Total).
 - [x] **Task 6.12.4: CSV Export for Dashboard Reports.** Add a "Télécharger CSV" button to the "Contrôle des montants" panel and the "Livreurs" table. Generate a UTF-8 BOM CSV file containing the aggregated data for the selected date range.
 
+## Milestone 6.13: UI/UX Foundation, Advanced Navigation & Reporting
+
+- [x] **Task 6.13.1: UI Foundation & Nested Sidebar.** Install `lucide-react`, create `DESIGN_SYSTEM.md`, and refactor `Layout.tsx` to support collapsible parent menus with sub-pages.
+- [x] **Task 6.13.2: Standalone Financial Report Page.** Create `/admin/reports/financials` with print-friendly UI and URL param support for specific file IDs.
+- [x] **Task 6.13.3: Rider Data Grid.** Add checkboxes, advanced filters, and smart export logic to `RiderBalancesTable.tsx`.
+- [x] **Task 6.13.4: Multi-File Selection Modal (Dashboard).** Add a "Sélectionner les fichiers" button to `AmountControlCard.tsx`. Build a modal with checkboxes to filter `importBatches`. Update the Card KPIs, CSV Export, and ExternalLink URL to reflect only the selected files.
+- [x] **Task 6.13.5: Advanced Report Filters & Modal Search.** Create a reusable `ReportFilters` component. Integrate it into `FileSelectionModal.tsx` (to search/filter 100+ files) and `FinancialReportPage.tsx` (Date Range, Search, Column Toggles). Ensure the filter bar on the standalone page has the `no-print` class. Update Grand Total calculations to react dynamically to active filters.
+
+## Milestone 6.14: Financial Logic & Architecture Remediation
+
+- [x] **Task 6.14.1: Fix Route Guards & Sidebar.** Fix the `SupervisorRoute` crash by redirecting admins away from `/supervisor`. Add "Tableau de bord" as a child link under "Supervision" in the sidebar.
+- [x] **Task 6.14.2: Fix Route Guard Loading State & SupervisorDashboard Crash.** Implement strict three-stage conditional render in `SupervisorRoute` and use the `'skip'` query pattern in `SupervisorDashboard.tsx` to prevent premature execution and `Forbidden` errors.
+- [x] **Task 6.14.3: Fix Supervisor Routing & Sidebar Role Guards.** Restrict supervisor routes, secure admin report routes under `/admin/*`, and ensure sidebar role visibility.
+- [x] **Task 6.14.4: Fix Provisioning & Routing.** Ensure `isActive: true` on user profile provisioning and robust routing/sidebar isolation.
+
+## Milestone 6.15: Routing & Sidebar Separation
+
+- [x] **Task 6.15.1: Separate Admin & Supervisor Routing and Sidebar.** Fix `SupervisorRoute` in `App.tsx` using `ProtectedRoute` and update `navItems` in `Layout.tsx` for strict role separation.
+
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

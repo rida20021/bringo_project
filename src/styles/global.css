@@ -1560,6 +1560,63 @@ a {
   font-size: 18px;
 }
 
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* Modal multi-file selection (Contrôle des montants) */
+
+.file-select-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.file-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.file-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.file-list-item:last-child {
+  border-bottom: 0;
+}
+
+.file-list-item .file-list-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list-date {
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.file-list-empty {
+  padding: 12px;
+}
+
 /* ---------- Admin: Rider 360 ---------- */
 
 .rider-detail-back {
@@ -3269,4 +3326,112 @@ a {
     width: calc(100vw - 16px);
     left: 8px;
   }
+}
+
+/* ---------- Standalone financial report (print) ---------- */
+
+.report-page {
+  max-width: 1000px;
+  margin: 32px auto;
+  padding: 32px 36px 48px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.report-page svg {
+  flex-shrink: 0;
+}
+
+.report-page .button svg + span,
+.report-page .button-ghost svg + span {
+  margin-left: 6px;
+}
+
+.report-page .table tfoot td {
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 0;
+  font-weight: 700;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  .report-page {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ---------- Report Filters Bar ---------- */
+
+.report-filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+
+.report-filters-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.report-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.report-search-input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(74 57 126 / 0.15);
+}
+
+.report-filters-dates {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-filters-columns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-column-toggles {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.report-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
 }
