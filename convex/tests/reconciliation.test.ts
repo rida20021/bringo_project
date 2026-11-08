@@ -274,3 +274,52 @@ describe('getAdminDashboardData', () => {
     expect(data.totals.cashDue).toBe(1111);
   });
 });
+
+describe('getGlobalReconciliation', () => {
+  it('merges orders and liveEntries correctly without double counting and computes true debt/real cash', async () => {
+    const t = makeT(modules);
+    const world = await seedWorld(t, DAY_A);
+
+    // Case A: Exact Match (Excel 1000, Live 1000)
+    await addOrder(t, world, 'CMD-MATCH', 1000, DAY_A);
+    await addLiveEntry(t, world, 'CMD-MATCH', 1000, DAY_A, 'cash');
+
+    // Case B: Mismatch (Excel 2000, Live 1800)
+    await addOrder(t, world, 'CMD-MISMATCH', 2000, DAY_A);
+    await addLiveEntry(t, world, 'CMD-MISMATCH', 1800, DAY_A, 'cash');
+
+    // Case C: Missing Live (Excel 3000, no Live entry)
+    await addOrder(t, world, 'CMD-MISSING-LIVE', 3000, DAY_A);
+
+    // Case D: Live Only (No Excel, Live 1500)
+    await addLiveEntry(t, world, 'CMD-LIVE-ONLY', 1500, DAY_A, 'cash');
+
+    // Collections
+    await addCollection(t, world, 500, DAY_A, DAY_A);
+
+    const result = await adminClient(t, world).query(
+      api.reconciliation.getGlobalReconciliation,
+      { fromDate: DAY_A, toDate: DAY_A }
+    );
+
+    expect(result.totals.excelTotal).toBe(1000 + 2000 + 3000); // 6000
+    // realCash = Excel total (6000) + Live Only (1500) = 7500
+    expect(result.totals.realCash).toBe(7500);
+    expect(result.totals.liveOnlyTotal).toBe(1500);
+    expect(result.totals.collected).toBe(500);
+
+    expect(result.alerts.mismatchCount).toBe(1);
+    expect(result.alerts.missingLiveCount).toBe(1);
+    expect(result.alerts.liveOnlyCount).toBe(1);
+
+    expect(result.mismatches).toEqual([
+      { commandId: 'CMD-MISMATCH', liveAmount: 1800, excelAmount: 2000 },
+    ]);
+    expect(result.missingLive).toEqual([
+      { commandId: 'CMD-MISSING-LIVE', excelAmount: 3000 },
+    ]);
+    expect(result.liveOnly).toEqual([
+      { commandId: 'CMD-LIVE-ONLY', liveAmount: 1500 },
+    ]);
+  });
+});

@@ -168,6 +168,10 @@
 
 - [x] **Task 6.16.1: Restructure Admin Dashboard & Sidebar.** Extract `<CashCircuitPanel />`, create new Admin Dashboard with Circuit Cash view, move old dashboard to `/admin/overview`, and update Admin sidebar navigation.
 
+## Milestone 6.17: Global Reconciliation
+
+- [x] **Task 6.17.2: Backend Aggregator for Global Reconciliation.**
+
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 
 - [ ] **Task 7.1: Gmail API.** Implement push notifications to auto-import the Excel files.

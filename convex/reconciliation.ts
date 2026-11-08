@@ -2,7 +2,7 @@ import { query } from './_generated/server';
 import type { QueryCtx } from './_generated/server';
 import type { Id, Doc } from './_generated/dataModel';
 import { v } from 'convex/values';
-import { requireSupervisor } from './lib/auth';
+import { requireAdmin, requireSupervisor } from './lib/auth';
 import { endOfDayCasablanca, startOfDayCasablanca } from './lib/dates';
 import { normalizeCommandKey } from './lib/tiktakValues';
 
@@ -480,6 +480,155 @@ export const getAdminDashboardData = query({
       },
       recentBatches: batches.slice(0, 20),
       riders,
+    };
+  },
+});
+
+export const getGlobalReconciliation = query({
+  args: { fromDate: v.number(), toDate: v.number() },
+  returns: v.object({
+    totals: v.object({
+      realCash: v.number(),
+      excelTotal: v.number(),
+      liveOnlyTotal: v.number(),
+      collected: v.number(),
+    }),
+    alerts: v.object({
+      mismatchCount: v.number(),
+      missingLiveCount: v.number(),
+      liveOnlyCount: v.number(),
+    }),
+    mismatches: v.array(
+      v.object({
+        commandId: v.string(),
+        liveAmount: v.number(),
+        excelAmount: v.number(),
+      })
+    ),
+    missingLive: v.array(
+      v.object({
+        commandId: v.string(),
+        excelAmount: v.number(),
+      })
+    ),
+    liveOnly: v.array(
+      v.object({
+        commandId: v.string(),
+        liveAmount: v.number(),
+      })
+    ),
+  }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const [fromTs, toTs] = args.fromDate <= args.toDate ? [args.fromDate, args.toDate] : [args.toDate, args.fromDate];
+    const from = startOfDayCasablanca(fromTs);
+    const to = endOfDayCasablanca(toTs);
+
+    const orders = await ctx.db
+      .query('orders')
+      .filter((q) => q.and(q.gte(q.field('deliveryDate'), from), q.lte(q.field('deliveryDate'), to)))
+      .collect();
+
+    const liveEntries = await ctx.db
+      .query('liveEntries')
+      .filter((q) => q.and(q.gte(q.field('entryDate'), from), q.lte(q.field('entryDate'), to)))
+      .collect();
+
+    const collections = await ctx.db
+      .query('cashCollections')
+      .filter((q) => q.and(q.gte(q.field('sourceReportDate'), from), q.lte(q.field('sourceReportDate'), to)))
+      .collect();
+
+    // 1. Group Orders
+    const ordersByKey = new Map<string, { amount: number; commandId: string }>();
+    let excelTotal = 0;
+    for (const order of orders) {
+      excelTotal += order.amount;
+      const key = normalizeCommandKey(order.commandId);
+      const existing = ordersByKey.get(key);
+      if (existing) {
+        existing.amount += order.amount;
+      } else {
+        ordersByKey.set(key, { amount: order.amount, commandId: order.commandId });
+      }
+    }
+
+    // 2. Group Live Entries
+    const liveByKey = new Map<string, { amount: number; commandId: string }>();
+    for (const entry of liveEntries) {
+      const key = normalizeCommandKey(entry.commandId);
+      const existing = liveByKey.get(key);
+      if (existing) {
+        existing.amount += entry.amount;
+      } else {
+        liveByKey.set(key, { amount: entry.amount, commandId: entry.commandId });
+      }
+    }
+
+    // 3. Merge & Compare
+    const allKeys = new Set([...ordersByKey.keys(), ...liveByKey.keys()]);
+    let realCash = 0;
+    let liveOnlyTotal = 0;
+
+    const mismatches: Array<{ commandId: string; liveAmount: number; excelAmount: number }> = [];
+    const missingLive: Array<{ commandId: string; excelAmount: number }> = [];
+    const liveOnly: Array<{ commandId: string; liveAmount: number }> = [];
+
+    for (const key of allKeys) {
+      const orderGroup = ordersByKey.get(key);
+      const liveGroup = liveByKey.get(key);
+
+      if (orderGroup && liveGroup) {
+        if (orderGroup.amount === liveGroup.amount) {
+          // Case A: Exact Match
+          realCash += orderGroup.amount;
+        } else {
+          // Case B: Mismatch
+          realCash += orderGroup.amount;
+          mismatches.push({
+            commandId: orderGroup.commandId,
+            liveAmount: liveGroup.amount,
+            excelAmount: orderGroup.amount,
+          });
+        }
+      } else if (orderGroup && !liveGroup) {
+        // Case C: Missing Live
+        realCash += orderGroup.amount;
+        missingLive.push({
+          commandId: orderGroup.commandId,
+          excelAmount: orderGroup.amount,
+        });
+      } else if (!orderGroup && liveGroup) {
+        // Case D: Live Only
+        realCash += liveGroup.amount;
+        liveOnlyTotal += liveGroup.amount;
+        liveOnly.push({
+          commandId: liveGroup.commandId,
+          liveAmount: liveGroup.amount,
+        });
+      }
+    }
+
+    const collected = collections
+      .filter((c) => !c.isReversal)
+      .reduce((sum, c) => sum + c.amount, 0);
+
+    return {
+      totals: {
+        realCash,
+        excelTotal,
+        liveOnlyTotal,
+        collected,
+      },
+      alerts: {
+        mismatchCount: mismatches.length,
+        missingLiveCount: missingLive.length,
+        liveOnlyCount: liveOnly.length,
+      },
+      mismatches,
+      missingLive,
+      liveOnly,
     };
   },
 });
