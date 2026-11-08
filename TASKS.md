@@ -171,6 +171,7 @@
 ## Milestone 6.17: Global Reconciliation
 
 - [x] **Task 6.17.2: Backend Aggregator for Global Reconciliation.**
+- [x] **Task 6.17.3: Frontend UI for Global Reconciliation.**
 
 ## Milestone 7: Automation & Final Polish (Previously Milestone 5)
 
