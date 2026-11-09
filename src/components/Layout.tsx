@@ -186,7 +186,8 @@ export default function Layout() {
         label: 'Rapports',
         icon: Calculator,
         children: [
-          { to: '/admin/reports/financials', label: 'Contrôle des montants', icon: Calculator }
+          { to: '/admin/reports/financials', label: 'Contrôle des montants', icon: Calculator },
+          { to: '/admin/reports/reconciliation', label: 'Rapprochement Global', icon: Calculator },
         ]
       }
     );

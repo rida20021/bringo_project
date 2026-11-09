@@ -15,6 +15,7 @@ import RidersPage from './features/admin/RidersPage';
 import RiderDetailPage from './features/admin/RiderDetailPage';
 import RiderHome from './features/rider/RiderHome';
 import FinancialReportPage from './features/admin/reports/FinancialReportPage';
+import ReconciliationPage from './features/admin/reports/ReconciliationPage';
 import NotFound from './components/NotFound';
 
 type Role = 'supervisor' | 'admin' | 'rider';
@@ -121,6 +122,7 @@ export default function App() {
           <Route path="riders/:riderId" element={<RiderDetailPage />} />
           <Route path="reports/riders" element={<RidersPage />} />
           <Route path="reports/financials" element={<FinancialReportPage />} />
+          <Route path="reports/reconciliation" element={<ReconciliationPage />} />
         </Route>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<NotFound />} />
