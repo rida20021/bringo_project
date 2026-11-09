@@ -49,7 +49,7 @@ export default function ReconciliationPage() {
             Rapprochement Global
           </h1>
           <p className="page-sub" style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
-            Fusion unifiée des commandes Excel et des saisies Live sans double compte.
+            Fusion unifiée du Chiffre d'Affaires (CA) Excel et des saisies Live sans double compte.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#fff', padding: '8px 16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -107,19 +107,19 @@ export default function ReconciliationPage() {
         }}
       >
         <div className="panel" style={{ padding: '20px', background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Cash Réel</span>
+          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>CA Réel</span>
           <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--primary, #4a397e)', marginTop: '8px' }}>
             {formatMAD(totals.realCash)}
           </div>
         </div>
         <div className="panel" style={{ padding: '20px', background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Cash Excel</span>
+          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>CA Excel</span>
           <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', marginTop: '8px' }}>
             {formatMAD(totals.excelTotal)}
           </div>
         </div>
         <div className="panel" style={{ padding: '20px', background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Cash Live (Non matché)</span>
+          <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>CA Live (Non matché)</span>
           <div style={{ fontSize: '24px', fontWeight: 700, color: '#d97706', marginTop: '8px' }}>
             {formatMAD(totals.liveOnlyTotal)}
           </div>
