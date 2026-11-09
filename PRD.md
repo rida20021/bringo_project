@@ -1,12 +1,15 @@
 # Bringo Money Flow & Rider Reconciliation — Product Requirements Document (PRD)
 
 ## 1. Executive Summary
+
 Bringo requires a reliable system to reconcile money collected by riders, money received by the supervisor, cash deposited into the bank, and TPE/card payments. The system must ingest daily TikTak Excel reports via email, but also allow Riders to input their delivery data live. The application must strictly separate physical cash from electronic payments and provide Admin/Supervisor audit dashboards.
 
 ## 2. Problem Statement
+
 Manual interpretation of daily spreadsheets leads to delayed deposits, missing receipts, and uncertainty about rider balances. Riders currently have no way to report their daily collections live, causing a "blackout" period until the next-day Excel file arrives. We need a system that tracks live rider inputs and reconciles them against the next-day Excel report to catch discrepancies immediately.
 
 ## 3. Goals
+
 - Provide a Rider mobile-friendly web interface to log commands, markets, amounts, and payment methods live.
 - Automatically ingest the next-day TikTak Excel report.
 - Cross-reference Rider live entries against the Excel file to flag discrepancies (missing commands or mismatched amounts).
@@ -15,7 +18,9 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Apply Bringo brand colors for a professional UI.
 
 ## 4. Users and Permissions
+
 ### 4.1 Rider
+
 - Can log in via mobile web.
 - **Market Assignment:** Only sees markets assigned to them by the Admin.
 - Can manually input: Command Number, Market (selected from assigned markets), Amount, and Payment Method (`cash`, `tpe`, `card`).
@@ -24,12 +29,14 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Cannot see the TikTak Excel files or other riders' data.
 
 ### 4.2 Supervisor
+
 - Can view daily cash flow KPIs for a selected date.
 - Can record cash physically received from Riders using a searchable dropdown form.
 - Can record bank deposits and upload supporting receipts.
 - Can review Rider-uploaded receipts (read-only view).
 
 ### 4.3 Admin
+
 - Full oversight and audit capabilities.
 - Imports the TikTak Excel files and manages bad imports (cascade delete).
 - Reviews the "Next-Day Reconciliation" dashboard to see discrepancies.
@@ -40,12 +47,15 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **New Operations:** Manages rider payroll, cross-market settlements, system settings, and auto-approval thresholds.
 
 ### 4.4 Dispatcher (New)
+
 - **Access:** Live entry dashboard and Command Rescue panel.
 - **Permissions:** Can search for stuck commands, select specific riders from that market, and send in-app rescue notifications.
 - **Restrictions:** Cannot view salaries, discrepancies, deposits, or system settings.
 
 ## 5. Scope
+
 ### In Scope
+
 - Secure role-based access control (Rider, Supervisor, Admin).
 - Rider live-entry mobile UI.
 - Market database (CRUD for admin, dropdown for riders).
@@ -57,24 +67,29 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - Bringo brand UI (#eab818, #4a397e).
 
 ### Out of Scope
+
 - Rider delivery routing app (handled by TikTak's separate app).
 - Automated bank integrations.
 
 ## 6. Daily Workflow
-## 6. Daily Workflow
+
 1. **Live Entry (Today):** Rider completes a delivery. Opens Bringo web app, inputs Command #, selects Market, inputs Amount, selects Method. Uploads TPE receipt immediately if applicable.
 2. **Excel Arrival (Tomorrow Morning, ~9:00 AM):** TikTak sends the Excel file. Admin imports it. The system calculates the exact cash each Rider owes.
 3. **Rider "Owe" Banner:** The Rider sees a Red banner on their app: "You owe X MAD. Hand cash to your Supervisor." (Riders do NOT upload bank receipts for cash).
 4. **Supervisor Collection:** The Supervisor physically collects the cash from the Rider. Supervisor logs it in the app. Rider's banner turns Yellow. The debt transfers to the Supervisor's "Vault".
 5. **Supervisor Bulk Deposit:** When the Supervisor goes to the bank, they deposit the cash and upload ONE receipt covering multiple Riders. The Admin approves the deposit, clearing the Supervisor's Vault and all linked Riders' banners.
 6. **Reconciliation:** System matches Rider live entries to the Excel file. Missing or mismatched amounts are flagged for Admin review.
+
 ## 7. Dashboard Requirements
+
 ### 7.1 Rider Dashboard
+
 - Simple form to enter Command #, Market, Amount, Method.
 - View of "My Entries Today".
 - Status of uploaded receipts (Pending, Approved, Rejected).
 
 ### 7.2 Admin Dashboard
+
 - **Date Filtering:** Ability to view historical data via a date range picker.
 - **Next-Day Reconciliation Alerts:** Shows rider entries not found in the Excel file, or amount mismatches.
 - **Review Queues:** Pending TPE receipts, pending Bank Deposits (from Supervisors), and pending Discrepancies.
@@ -83,8 +98,10 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **Rider 360 View:** A dedicated page to view a specific Rider's daily performance and reset their password.
 - **Smart Onboarding:** Admin can create an account by selecting an unverified Rider from the imported Excel data. Bulk upload for markets.
 - **City Filtering:** Admin can assign a City to a Market and a Rider. Dashboards can be filtered by City.
+- **Global Reconciliation View:** A dedicated page (`/admin/reports/reconciliation`) that merges Excel and Live entries to calculate True Revenue (CA Réel), flagging Missing Live entries, Live-Only entries, and Amount Mismatches without double-counting.
 
 ### 7.3 Supervisor Dashboard
+
 - **Date Filtering:** Single date picker to view daily KPIs.
 - **Cash Collection Form:** Searchable dropdown to select a Rider and log cash collected.
 - **Bank Deposit Form:** Searchable dropdown to select a Rider and upload a bank deposit receipt.
@@ -92,24 +109,29 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **Supervisor Vault:** A clear view of the total cash the Supervisor is currently holding, with a rich log of which Riders they collected from, when, and how much.
 
 ## 8. Business Rules & Calculations
+
 ### 8.1 Payment Methods
+
 - `cash`: Physical cash. Requires deposit receipt eventually.
 - `tpe`: Card terminal at the door. Requires TPE receipt upload.
 - `card` (Online): Paid via Bringo app. No receipt required. Excluded from cash/TPE totals.
 - Unknown methods = quarantined.
 
 ### 8.2 Reconciliation Logic
+
 - All calculations use integer minor units (centimes) and Africa/Casablanca timezone boundaries.
 - Rider live amount vs. Excel amount must match exactly.
 - Partial deposits do not resolve the full cash obligation until Admin approval.
 
 ### 8.3 Financial Edge Cases & Debt Tracking
+
 - **Rider Loss (Formerly Write-Off):** If a Rider loses cash or absconds, the Admin records the missing amount as a `debtBalance` against the Rider's profile. This clears the rider's daily cash obligation but tracks that the Rider owes the company. The system must log an audit event with the reason.
 - **Supervisor Short Deposit:** If a Supervisor deposits 4,000 MAD but the receipts show 5,000 MAD, the Admin approves the 4,000 MAD and the system creates a 1,000 MAD `debtBalance` against the Supervisor's profile. The deposit is reconciled, but the Supervisor owes the company 1,000 MAD.
 - **Debt Visibility:** The Admin must be able to see every Rider's and Supervisor's current `debtBalance` in the Team (Équipe) page and the upcoming Rider 360 view.
 - **Midnight Grace Period:** Live entries submitted between 00:00 and 03:00 AM are automatically assigned to the previous day's `entryDate` to prevent timezone discrepancy errors.
 
 ### 8.4 Locked Business Decisions (D1-D7)
+
 - **D1 (Salary Cycle):** Monthly (1st to last day). Admin can override `salaryCycleStartDay`. Mid-month starts prorate automatically.
 - **D2 (Daily Rate):** Admin-controlled on `userProfiles.dailyRate`. Not retroactive to generated periods.
 - **D3 (Deductions):** Auto-pulls unresolved `debtBalance` discrepancies during salary generation. Admin can edit before approval.
@@ -119,6 +141,7 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **D7 (Auto-Approval):** Discrepancies below a configurable threshold (stored in `systemSettings`, default 2 MAD) are automatically approved by a background job.
 
 ## 9. Technical Direction & Branding
+
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS.
 - **Brand Colors:** 
   - Primary: `#4a397e` (Deep Purple)
@@ -128,6 +151,7 @@ Manual interpretation of daily spreadsheets leads to delayed deposits, missing r
 - **Email Ingestion:** Gmail API via Convex HTTP actions.
 
 ## 10. Acceptance Criteria
+
 - A Rider can submit a command and upload a TPE receipt from a mobile browser.
 - The UI reflects the Bringo brand colors.
 - Admin can import an Excel file. The system automatically flags a discrepancy if the Rider entered an order that isn't in the file, or if the amounts differ.
