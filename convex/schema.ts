@@ -48,6 +48,36 @@ export default defineSchema({
      * when cash is lost or when an approved bank deposit is short.
      */
     debtBalance: v.optional(v.number()),
+    // HR & Payroll fields (all optional to avoid breaking existing users)
+    phone: v.optional(v.string()),
+    cin: v.optional(v.string()),
+    cie: v.optional(v.string()),
+    address: v.optional(v.string()),
+    vehicleType: v.optional(v.union(v.literal('moto'), v.literal('vélo'), v.literal('voiture'))),
+    vehiclePlate: v.optional(v.string()),
+    vehiclePhotos: v.optional(v.array(v.id('_storage'))),
+    licensePhoto: v.optional(v.id('_storage')),
+    dailyRate: v.optional(v.number()), // stored in integer centimes
+    zoneId: v.optional(v.id('zones')),
+    marketIds: v.optional(v.array(v.id('markets'))),
+    rib: v.optional(v.string()),
+    paymentMethod: v.optional(v.union(v.literal('cash'), v.literal('virement'), v.literal('espece'))),
+    status: v.optional(v.union(v.literal('active'), v.literal('suspended'), v.literal('left'))),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    // Provisioning checklist (all optional to avoid breaking existing users)
+    provisioning: v.optional(v.object({
+      contractSigned: v.boolean(),
+      cinCollected: v.boolean(),
+      cieCollected: v.boolean(),
+      ribCollected: v.boolean(),
+      vehiclePhotos: v.boolean(),
+      licensePhoto: v.boolean(),
+      appAccountCreated: v.boolean(),
+      marketsAssigned: v.boolean(),
+      completedAt: v.optional(v.number()),
+      completedBy: v.optional(v.id('users')),
+    })),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('userId', ['userId'])
@@ -64,6 +94,117 @@ export default defineSchema({
   }).index('externalId', ['externalId'])
     .index('name', ['name'])
     .index('city', ['city']),
+
+  zones: defineTable({
+    name: v.string(),
+    marketIds: v.array(v.id('markets')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('name', ['name']),
+
+  riderMarkets: defineTable({
+    riderId: v.id('users'),
+    marketId: v.id('markets'),
+    assignedAt: v.number(),
+    assignedBy: v.id('users'),
+  }).index('by_rider', ['riderId'])
+    .index('by_market', ['marketId']),
+
+  attendance: defineTable({
+    riderId: v.id('users'),
+    date: v.number(), // Timestamp of the start of the day (Casablanca time)
+    status: v.union(
+      v.literal('worked'),
+      v.literal('off'),
+      v.literal('in'),
+      v.literal('out'),
+      v.literal('cumul')
+    ),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_rider_and_date', ['riderId', 'date'])
+    .index('by_date', ['date']),
+
+  salaryPeriods: defineTable({
+    riderId: v.id('users'),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+    daysWorked: v.number(),
+    dailyRate: v.number(), // Snapshot of rate in centimes
+    grossSalary: v.number(), // daysWorked * dailyRate
+    totalDeductions: v.number(),
+    bonus: v.number(),
+    netSalary: v.number(), // grossSalary + bonus - totalDeductions
+    status: v.union(v.literal('draft'), v.literal('approved'), v.literal('paid')),
+    approvedAt: v.optional(v.number()),
+    approvedBy: v.optional(v.id('users')),
+    paidAt: v.optional(v.number()),
+    paymentMethod: v.optional(v.string()),
+    carryOverFrom: v.optional(v.id('salaryPeriods')), // Links to previous negative period
+    debtId: v.optional(v.id('riderDebts')), // Links to formal debt if unresolved
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_rider_and_period', ['riderId', 'periodStart'])
+    .index('by_status', ['status']),
+
+  salaryDeductions: defineTable({
+    salaryPeriodId: v.id('salaryPeriods'),
+    type: v.string(), // e.g., 'ecart_versement', 'avance', 'reparation'
+    amount: v.number(), // positive integer centimes
+    note: v.optional(v.string()),
+    sourceRef: v.optional(v.string()), // ID of the linked deposit or order
+    createdAt: v.number(),
+  }).index('by_salary_period', ['salaryPeriodId']),
+
+  riderDebts: defineTable({
+    riderId: v.id('users'),
+    amount: v.number(),
+    originPeriodId: v.optional(v.id('salaryPeriods')),
+    status: v.union(v.literal('open'), v.literal('settled'), v.literal('forgiven')),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_rider', ['riderId'])
+    .index('by_status', ['status']),
+
+  deposits: defineTable({
+    marketId: v.id('markets'),
+    date: v.number(), // Primary date of the deposit (Casablanca day)
+    cumulFromDate: v.optional(v.number()), // Set when status = 'cumul'
+    cumulToDate: v.optional(v.number()),   // Set when status = 'cumul'
+    expectedAmount: v.number(), // Expected cash (integer centimes)
+    depositedAmount: v.number(), // Actual deposited cash (integer centimes)
+    status: v.union(
+      v.literal('effectue'),
+      v.literal('cumul'),
+      v.literal('non_effectue')
+    ),
+    discrepancy: v.number(), // depositedAmount - expectedAmount
+    riderId: v.optional(v.id('users')), // Fuzzy-matched from SV Excel, admin-adjustable
+    comment: v.optional(v.string()),
+    resolvedBy: v.optional(v.id('users')),
+    resolvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_market_and_date', ['marketId', 'date'])
+    .index('by_status', ['status'])
+    .index('by_rider', ['riderId']),
+
+  shifts: defineTable({
+    riderId: v.id('users'),
+    date: v.number(), // Start of the Casablanca day
+    status: v.union(
+      v.literal('present'),
+      v.literal('off'),
+      v.literal('renfort'),
+      v.literal('meal_box')
+    ),
+    targetMarketId: v.optional(v.id('markets')), // Required if status is renfort/meal_box
+    createdBy: v.id('users'), // Admin who created the shift
+    updatedAt: v.number(),
+  }).index('by_rider_and_date', ['riderId', 'date'])
+    .index('by_date', ['date']),
 
   liveEntries: defineTable({
     riderUserId: v.id('users'),

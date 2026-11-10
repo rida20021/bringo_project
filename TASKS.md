@@ -19,14 +19,14 @@
 ### Phase 1: Database & Backend Foundation (Schema)
 **Goal:** Expand the database safely before writing any logic or UI. All new fields MUST be `v.optional()` to prevent breaking existing users.
 
-- [ ] **Task 1.1: Extended Rider Profile Schema.** Add `phone`, `cin`, `cie`, `address`, `vehicleType`, `vehiclePlate`, `vehiclePhotos[]`, `licensePhoto`, `dailyRate`, `zoneId`, `marketIds[]`, `rib`, `paymentMethod`, `status`, `startDate`, `endDate` to `userProfiles`.
-- [ ] **Task 1.2: Provisioning Schema.** Add `provisioning` object to rider profile (8 fixed boolean items: contract, cin, cie, rib, vehicle photos, license, app account, markets assigned).
-- [ ] **Task 1.3: Zones Table.** Create `zones` table (name, marketIds[]).
-- [ ] **Task 1.4: Rider-Markets Join Table.** Create `riderMarkets` table (riderId, marketId) and basic mutations (`assignMarketsToRider`, `getMyMarkets`).
-- [ ] **Task 1.5: Attendance Table.** Create `attendance` table (riderId, date, status: worked/off/in/out/cumul, note). Index on riderId+date.
-- [ ] **Task 1.6: Salary Tables.** Create `salaryPeriods`, `salaryDeductions`, and `riderDebts` tables per PRD §10.2.
-- [ ] **Task 1.7: Deposits Table.** Create `deposits` table: marketId, date, cumulFromDate, cumulToDate, expectedAmount, depositedAmount, status, discrepancy, riderId, comment.
-- [ ] **Task 1.8: Shifts Table.** Create `shifts` table (riderId, date, status: present/off/renfort/meal_box, targetMarketId). Index on riderId+date.
+- [x] **Task 1.1: Extended Rider Profile Schema.** Add `phone`, `cin`, `cie`, `address`, `vehicleType`, `vehiclePlate`, `vehiclePhotos[]`, `licensePhoto`, `dailyRate`, `zoneId`, `marketIds[]`, `rib`, `paymentMethod`, `status`, `startDate`, `endDate` to `userProfiles`.
+- [x] **Task 1.2: Provisioning Schema.** Add `provisioning` object to rider profile (8 fixed boolean items: contract, cin, cie, rib, vehicle photos, license, app account, markets assigned).
+- [x] **Task 1.3: Zones Table.** Create `zones` table (name, marketIds[]).
+- [x] **Task 1.4: Rider-Markets Join Table.** Create `riderMarkets` table (riderId, marketId) and basic mutations (`assignMarketsToRider`, `getMyMarkets`).
+- [x] **Task 1.5: Attendance Table.** Create `attendance` table (riderId, date, status: worked/off/in/out/cumul, note). Index on riderId+date.
+- [x] **Task 1.6: Salary Tables.** Create `salaryPeriods`, `salaryDeductions`, and `riderDebts` tables per PRD §10.2.
+- [x] **Task 1.7: Deposits Table.** Create `deposits` table: marketId, date, cumulFromDate, cumulToDate, expectedAmount, depositedAmount, status, discrepancy, riderId, comment.
+- [x] **Task 1.8: Shifts Table.** Create `shifts` table (riderId, date, status: present/off/renfort/meal_box, targetMarketId). Index on riderId+date.
 
 ### Phase 2: Data Ingestion (Excel Imports)
 **Goal:** Bring the 10 months of historical SV, SS, and JO data into the new tables with conflict resolution.

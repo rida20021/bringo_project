@@ -32,6 +32,7 @@ import type * as markets from "../markets.js";
 import type * as orders from "../orders.js";
 import type * as receipts from "../receipts.js";
 import type * as reconciliation from "../reconciliation.js";
+import type * as riderMarkets from "../riderMarkets.js";
 import type * as riders from "../riders.js";
 import type * as search from "../search.js";
 import type * as settings from "../settings.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   orders: typeof orders;
   receipts: typeof receipts;
   reconciliation: typeof reconciliation;
+  riderMarkets: typeof riderMarkets;
   riders: typeof riders;
   search: typeof search;
   settings: typeof settings;
