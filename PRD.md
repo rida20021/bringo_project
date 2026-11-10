@@ -162,6 +162,7 @@ From the Global View, admin can change any order's `paymentMethod` to **any** of
 
 - Live Entry market dropdown is **restricted to `marketIds`**.
 - Admin changes assignments in `/admin/team` at any time.
+- Rider access to markets is determined by their Home Market assignment, PLUS any active renfort (reinforcement) or meal_box shifts for the current day. Admin can always override market access.
 
 ### 8.3 Zones
 
@@ -544,3 +545,23 @@ The admin chooses **per row**. Every choice is written to `auditLogs`.
 | Top-3 cash discrepancies identified | **< 2 min** each morning |
 | Audit trail completeness for admin edits | **100 %** |
 | General search lookup | **< 3 s and < 2 clicks** |
+
+---
+
+## 19. Planning & Workforce Management (Shifts)
+
+### 19.1 Concept
+
+- The system replaces the weekly `Planning_Casablanca.xlsx` and `Planning_Marrakech.xlsx` files. The Admin creates the schedule directly in the web app, and Riders can view it on their mobile dashboard.
+
+### 19.2 Data Model
+
+```ts
+shifts: {
+  riderId: Id<'users'>,
+  date: number, // Start of Casablanca day
+  status: "present" | "off" | "renfort" | "meal_box",
+  targetMarketId?: Id<'markets'>, // Required if status = "renfort" or "meal_box"
+  createdBy: Id<'users'>,
+  updatedAt: number,
+}

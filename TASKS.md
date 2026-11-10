@@ -13,7 +13,7 @@
 
 ---
 
-## PART 2: The HR & Payroll Expansion (The Plan)
+## PART 2: The HR, Payroll & Workforce Expansion (The Plan)
 *The following phases are strictly ordered from the database foundation up to the UI.*
 
 ### Phase 1: Database & Backend Foundation (Schema)
@@ -26,6 +26,7 @@
 - [ ] **Task 1.5: Attendance Table.** Create `attendance` table (riderId, date, status: worked/off/in/out/cumul, note). Index on riderId+date.
 - [ ] **Task 1.6: Salary Tables.** Create `salaryPeriods`, `salaryDeductions`, and `riderDebts` tables per PRD §10.2.
 - [ ] **Task 1.7: Deposits Table.** Create `deposits` table: marketId, date, cumulFromDate, cumulToDate, expectedAmount, depositedAmount, status, discrepancy, riderId, comment.
+- [ ] **Task 1.8: Shifts Table.** Create `shifts` table (riderId, date, status: present/off/renfort/meal_box, targetMarketId). Index on riderId+date.
 
 ### Phase 2: Data Ingestion (Excel Imports)
 **Goal:** Bring the 10 months of historical SV, SS, and JO data into the new tables with conflict resolution.
@@ -35,8 +36,8 @@
 - [ ] **Task 2.3: Fuzzy Rider Matching.** Levenshtein match for SV imports. ≥85% auto-linked, 50-85% amber flag, <50% `to_link` orange badge.
 - [ ] **Task 2.4: Historical Payroll Import (SS).** `SS-2026.xlsx` → historical salary periods (pre-fill salaryPeriods).
 
-### Phase 3: The Financial Engine (Business Logic)
-**Goal:** Build the math for payroll, hybrid negative debt, and cumulative deposits.
+### Phase 3: The Financial Engine & Business Logic
+**Goal:** Build the math for payroll, hybrid negative debt, cumulative deposits, and shift access.
 
 - [ ] **Task 3.1: Period Boundaries.** First payslip: startDate → end of month. Subsequent: 1st → end of month. Configurable in Settings.
 - [ ] **Task 3.2: Generate Payslips.** `generateSalaryPeriod` mutation: calculates daysWorked from attendance, applies dailyRate (×30 normalization), auto-pulls unresolved discrepancies as deductions.
@@ -45,9 +46,10 @@
 - [ ] **Task 3.5: Negative Net Policy (Hybrid).** 1st negative = carry over. 2nd negative = formal `riderDebts`. 3rd = flag rider.
 - [ ] **Task 3.6: Cumulative Deposits (Cumul).** Detect `cumul`, prompt for `cumulFromDate`, sum expected amounts across the range, compute discrepancy.
 - [ ] **Task 3.7: Discrepancy Resolution.** Backend actions to Assign to rider (creates payslip deduction), Absorb (company loss), or Correct.
+- [ ] **Task 3.8: Renfort Access Logic.** Update the `getMyMarkets` backend query. If a rider has a `renfort` or `meal_box` shift for the current day, dynamically append the `targetMarketId` to their allowed markets for Live Entry.
 
 ### Phase 4: Core UI & Operations
-**Goal:** Build the frontend screens for the Admin to manage HR, Payroll, and Attendance.
+**Goal:** Build the frontend screens for the Admin to manage HR, Payroll, Attendance, and Planning.
 
 - [ ] **Task 4.1: Rider Info Form.** Build the UI form in Rider 360/Équipe for Admin to edit phone, address, vehicle, CIN, CIE, RIB, daily rate.
 - [ ] **Task 4.2: Moto Paper Upload.** Build `<MotoPaperUpload>` for vehicle photos and license photo (Convex file storage).
@@ -58,6 +60,8 @@
 - [ ] **Task 4.7: Payslip Detail UI.** `/admin/salaries/:id` detail with inline editing (daysWorked, dailyRate, deductions, bonus).
 - [ ] **Task 4.8: Deposit Review UI.** Admin panel to review cumulative deposits, link `to_link` riders, and resolve discrepancies.
 - [ ] **Task 4.9: Payment Method Correction UI.** Inline dropdown in Global View to change `cash`/`carte`/`en_ligne`. Recalculates downstream math.
+- [ ] **Task 4.10: Admin Planning Grid UI.** Build `/admin/planning` with a weekly grid (rows = riders, columns = days). Allow inline editing of status (Present/Off/Renfort/Meal Box) and target markets for Renfort.
+- [ ] **Task 4.11: Rider Schedule View.** Add a "Mon Planning" tab to the Rider Mobile UI to show their weekly schedule (read-only for riders).
 
 ### Phase 5: Dashboards & Global Search
 **Goal:** Bring all the new data together into the visual dashboards and search.
