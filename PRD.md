@@ -234,10 +234,10 @@ attendance: {
 | `cumul` | Catch-up day. | Counted as worked. |
 
 ### 9.3 UI
-
 - **Calendar view (default):** month grid — one row per rider, one column per day. Click a cell to cycle `worked → off → in → out`. Colors: green / grey / blue / red.
+- **Auto-Generate:** A button to populate the entire month based on the Planning Grid (Shifts).
+- **Manage Exceptions:** Admin only manually clicks to override the baseline (e.g., marking a sick day).
 - **Table view** (toggle).
-- Import from JO Excel (`JO-2026.xlsx`).
 - Bulk edit across riders × date range.
 
 ---
@@ -250,7 +250,7 @@ attendance: {
 |---|---|
 | First payslip | From `startDate` (first `IN`) to end of that calendar month. *Example: rider starts 15 Jan → first payslip covers 15 Jan → 31 Jan.* |
 | Subsequent payslips | From the 1st to the end of each calendar month. |
-| Monthly rate normalization | `dailyRate × 30`. Actual pay = `dailyRate × actualDaysWorked` (28, 29, 30, or 31 days). Matches the SS Excel where each rider has a fixed `SALAIRE /J` and pay = `daysWorked × dailyRate`. |
+| Monthly rate normalization | `dailyRate × 30`. Actual pay = `dailyRate × actualDaysWorked` (28, 29, 30, or 31 days). Pay = daysWorked × dailyRate. (First month anchored to startDate). |
 | Configurability | Period boundaries and normalization configurable in Settings; admin can override per rider. |
 
 ### 10.2 Data Model
@@ -479,35 +479,18 @@ Max **5 results per category**. Every row fully clickable.
 
 ---
 
-## 15. Import / Export
+## 15. Import / Export & Opening Balances
 
-### 15.1 Import (admin-only)
+### 15.1 Go-Live Strategy (No Historical Imports)
+We are bypassing the historical 10-month Excel imports for Attendance, Deposits, and Salaries. The system goes live with a clean slate. The Admin uses the Web App UI to manage daily operations. TikTak (Orders) imports will still function as normal.
 
-**Supported files:**
+### 15.2 Opening Balances
+To handle historical debts or mid-month starts, the Admin uses the "Opening Balance" form in the Rider 360 page to manually input:
+- The rider's actual `startDate`.
+- Any current outstanding debt (`riderDebts`) owed to the company.
+- Any current advance payments (`salaryDeductions`).
 
-| File | Imports |
-|---|---|
-| `SV-2026.xlsx` | Deposits |
-| `SS-2026.xlsx` | Historical salary periods |
-| `JO-2026.xlsx` | Attendance |
-| TikTak Excel files | Orders (existing) |
-
-- **Historical depth:** full 10 months (Janvier → Octobre 2026). Every imported field is admin-editable after import.
-
-**Conflict resolution (mandatory):**
-
-If an existing record already exists for the same key (`commandId` for orders, `marketId + date` for deposits, `riderId + date` for attendance), the import pauses and shows a resolution screen per conflicting row:
-
-| Option | Action |
-|---|---|
-| Écraser | Replace existing record with the new value. |
-| Conserver | Keep existing; skip this imported row. |
-| Fusionner | Merge when applicable (e.g., keep existing `depositedAmount`, update `expectedAmount`). |
-
-The admin chooses **per row**. Every choice is written to `auditLogs`.
-
-### 15.2 Export
-
+### 15.3 Export
 - CSV / Excel: deposits, payslips, reconciliation, dashboard data.
 - UTF-8 BOM preserved.
 
