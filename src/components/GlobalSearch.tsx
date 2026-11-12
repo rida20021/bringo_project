@@ -153,11 +153,7 @@ export default function GlobalSearch() {
                       <div className="global-search-row">
                         <span className="global-search-label">Paiement</span>
                         <span className="global-search-value">
-                          {order.paymentMethod === 'cash'
-                            ? 'Espèces'
-                            : order.paymentMethod === 'card'
-                            ? 'Carte'
-                            : order.paymentMethod}
+                          {paymentMethodLabels[order.paymentMethod] ?? order.paymentMethod}
                         </span>
                       </div>
                     </div>

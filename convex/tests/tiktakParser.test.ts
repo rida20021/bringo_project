@@ -54,9 +54,12 @@ describe('parseAmountToCentimes', () => {
 });
 
 describe('parseTikTakDate', () => {
-  it('normalizes ISO dates to the start of the Casablanca day', () => {
+  it('normalizes ISO dates and datetimes to the start of the Casablanca day', () => {
     expect(parseTikTakDate('2026-10-25')).toBe(
       startOfDayCasablanca(Date.UTC(2026, 9, 25))
+    );
+    expect(parseTikTakDate('2026-11-04T00:00:00')).toBe(
+      startOfDayCasablanca(Date.UTC(2026, 10, 4))
     );
   });
 

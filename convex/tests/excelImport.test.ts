@@ -265,8 +265,8 @@ describe('importExcelFile action', () => {
 
     expect(orders).toHaveLength(2);
     expect(orders.map((order) => [order.paymentMethod, order.amount]).sort()).toEqual([
-      ['card', 5000],
       ['cash', 10000],
+      ['tpe', 5000],
     ]);
     expect(new Set(orders.map((order) => order.riderId)).size).toBe(1);
     expect(new Set(orders.map((order) => order.marketId)).size).toBe(1);
@@ -275,7 +275,7 @@ describe('importExcelFile action', () => {
     expect(sourceRows).toHaveLength(2);
     expect(sourceRows.every((row) => row.validationState === 'valid')).toBe(true);
     expect(new Set(sourceRows.map((row) => row.linkedOrderId)).size).toBe(2);
-    const splitWarning = 'Cmd #464491 : paiement partagé (cash / card)';
+    const splitWarning = 'Cmd #464491 : paiement partagé (cash / tpe)';
     expect(sourceRows.every((row) => row.warnings?.includes(splitWarning))).toBe(true);
     expect(batch).toMatchObject({ status: 'completed', acceptedRows: 2, conflictRows: 0 });
     expect(discrepancies).toHaveLength(0);
@@ -314,7 +314,7 @@ describe('importExcelFile action', () => {
     );
     const firstRow = sourceRows.find((row) => row.originalRowNumber === 2);
     const secondRow = sourceRows.find((row) => row.originalRowNumber === 3);
-    const splitWarning = 'Cmd #CMD-RIDER-SPLIT : paiement partagé (cash / card)';
+    const splitWarning = 'Cmd #CMD-RIDER-SPLIT : paiement partagé (cash / tpe)';
     expect(firstRow).toMatchObject({
       validationState: 'valid',
       warnings: [splitWarning],

@@ -36,7 +36,7 @@ async function seedMultiDay(t: T): Promise<World> {
   const world = await seedWorld(t, DAY_A);
 
   await addOrder(t, world, 'A-CASH', 1000, DAY_A);
-  await addOrder(t, world, 'A-CARD', 2000, DAY_A, 'card');
+  await addOrder(t, world, 'A-CARD', 2000, DAY_A, 'tpe');
   await addOrder(t, world, 'B-CASH', 3000, DAY_B);
   await addOrder(t, world, 'C-CASH', 4000, DAY_C);
 
@@ -160,7 +160,7 @@ describe('TPE approval KPIs', () => {
     const t = makeT(modules);
     const world = await seedWorld(t, DAY_A);
 
-    await addOrder(t, world, 'CMD-TPE', 2500, DAY_A, 'card');
+    await addOrder(t, world, 'CMD-TPE', 2500, DAY_A, 'tpe');
     const entry = await addLiveEntry(t, world, 'CMD-TPE', 2500, DAY_A, 'tpe');
     await addLiveTpeReceipt(t, world, entry, 'approved');
 
@@ -190,7 +190,7 @@ describe('TPE approval KPIs', () => {
     const t = makeT(modules);
     const world = await seedWorld(t, DAY_A);
 
-    await addOrder(t, world, 'MATCHED', 1200, DAY_A, 'card');
+    await addOrder(t, world, 'MATCHED', 1200, DAY_A, 'tpe');
     const matched = await addLiveEntry(t, world, 'MATCHED', 1200, DAY_A, 'tpe');
     await addLiveTpeReceipt(t, world, matched, 'approved');
 

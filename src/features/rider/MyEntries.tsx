@@ -300,13 +300,13 @@ export default function MyEntries() {
 
   const totals = filteredEntries.reduce(
     (acc, entry) => {
-      acc[entry.paymentMethod] += entry.amount;
+      acc[entry.paymentMethod] = (acc[entry.paymentMethod] || 0) + entry.amount;
       return acc;
     },
-    { cash: 0, tpe: 0, card: 0 }
+    { cash: 0, tpe: 0, online: 0 } as Record<'cash' | 'tpe' | 'online', number>
   );
 
-  const grandTotal = totals.cash + totals.tpe + totals.card;
+  const grandTotal = totals.cash + totals.tpe + totals.online;
 
   return (
     <section className="rider-section" aria-labelledby="my-entries-title">
@@ -428,8 +428,8 @@ export default function MyEntries() {
             <span className="amount">{formatMAD(totals.tpe)}</span>
           </div>
           <div className="day-total">
-            <span className="day-total-label">Carte</span>
-            <span className="amount">{formatMAD(totals.card)}</span>
+            <span className="day-total-label">En ligne</span>
+            <span className="amount">{formatMAD(totals.online)}</span>
           </div>
           <div className="day-total day-total-grand">
             <span className="day-total-label">Total</span>

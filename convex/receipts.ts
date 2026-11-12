@@ -86,8 +86,8 @@ export const uploadReceipt = mutation({
       throw new Error('Live entry not found');
     }
 
-    if (entry.paymentMethod === 'card') {
-      throw new Error('Card payments do not carry a receipt');
+    if (entry.paymentMethod === 'online') {
+      throw new Error('Online payments do not carry a receipt');
     }
     if (entry.paymentMethod === 'tpe' && args.kind !== 'tpe') {
       throw new Error('TPE payments require a TPE receipt');

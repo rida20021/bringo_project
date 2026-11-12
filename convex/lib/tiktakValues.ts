@@ -94,21 +94,14 @@ export function parseTikTakDate(value: unknown): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  // ISO date only: 2026-10-25
-  const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-  if (isoDate) {
+  // ISO date or datetime: 2026-10-25 or 2026-10-25T00:00:00
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+  if (isoMatch) {
     return utcDayToCasablanca(
-      Number(isoDate[1]),
-      Number(isoDate[2]),
-      Number(isoDate[3])
+      Number(isoMatch[1]),
+      Number(isoMatch[2]),
+      Number(isoMatch[3])
     );
-  }
-
-  // ISO datetime: 2026-10-25T00:00:00Z
-  if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
-    const time = Date.parse(trimmed);
-    if (Number.isNaN(time)) return null;
-    return startOfDayCasablanca(time);
   }
 
   // DD/MM/YYYY or DD-MM-YYYY

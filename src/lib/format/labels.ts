@@ -4,8 +4,8 @@ export const roleLabels: Record<'supervisor' | 'admin' | 'rider', string> = {
   rider: 'Livreur',
 };
 
-export const paymentMethodLabels: Record<'cash' | 'tpe' | 'card', string> = {
+export const paymentMethodLabels: Record<'cash' | 'tpe' | 'online', string> = {
   cash: 'Espèces',
   tpe: 'TPE',
-  card: 'Carte en ligne',
+  online: 'En ligne',
 };

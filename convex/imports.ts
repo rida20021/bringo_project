@@ -6,13 +6,18 @@ import { requireAdmin, requireSupervisor } from './lib/auth';
 import { parseAmountToCentimes, parseTikTakDate } from './lib/tiktakValues';
 import { insertAuditEvent } from './audit';
 
-const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'card' | 'online_payment' | 'unknown'> = {
+const PAYMENT_METHOD_MAP: Record<string, 'cash' | 'tpe' | 'online' | 'unknown'> = {
   cash: 'cash',
-  card: 'card',
-  online_payment: 'online_payment',
+  espece: 'cash',
+  card: 'tpe',
+  tpe: 'tpe',
+  carte: 'tpe',
+  online_payment: 'online',
+  online: 'online',
+  en_ligne: 'online',
 };
 
-function normalizePaymentMethod(raw: string): 'cash' | 'card' | 'online_payment' | 'unknown' {
+function normalizePaymentMethod(raw: string): 'cash' | 'tpe' | 'online' | 'unknown' {
   const key = raw.trim().toLowerCase().replace(/\s+/g, '_');
   return PAYMENT_METHOD_MAP[key] || 'unknown';
 }
@@ -330,7 +335,7 @@ export const processImportBatch = internalMutation({
         amount !== null
       ) {
         const eligibilityStatus =
-          paymentMethod === 'online_payment' ? 'excluded_payment_method' : 'eligible';
+          paymentMethod === 'online' ? 'excluded_payment_method' : 'eligible';
         const orderId = await ctx.db.insert('orders', {
           commandId,
           deliveryDate,
@@ -442,9 +447,9 @@ export const getImportBatches = query({
         
         if (order.paymentMethod === 'cash') {
           current.cashAmount += order.amount;
-        } else if (order.paymentMethod === 'card') {
+        } else if (order.paymentMethod === 'tpe') {
           current.cardAmount += order.amount;
-        } else if (order.paymentMethod === 'online_payment') {
+        } else if (order.paymentMethod === 'online') {
           current.onlineAmount += order.amount;
         }
       }

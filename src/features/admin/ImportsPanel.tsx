@@ -5,8 +5,8 @@ import type { Doc, Id } from '@convex/_generated/dataModel';
 import StatusBadge from '@/components/StatusBadge';
 import { formatDateTime, formatShortDate } from '@/lib/format';
 
-const DELETE_CONFIRMATION =
-  'Êtes-vous sûr ? Cela supprimera toutes les commandes et écarts associés.';
+const getDeleteConfirmation = (orderCount: number) =>
+  `Attention : Supprimer cet import effacera les commandes associées (${orderCount} commande${orderCount > 1 ? 's' : ''}), mais conservera les profils des livreurs. Voulez-vous continuer ?`;
 const SPLIT_PAYMENT_WARNING_MARKER = ': paiement partagé (';
 
 function isSplitPaymentWarning(message: string): boolean {
@@ -174,7 +174,8 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
 
   const handleDelete = async (batch: Doc<'importBatches'>) => {
     setError(null);
-    if (!window.confirm(DELETE_CONFIRMATION)) return;
+    const orderCount = batch.acceptedRows;
+    if (!window.confirm(getDeleteConfirmation(orderCount))) return;
 
     setDeletingId(batch._id);
     try {
@@ -312,7 +313,7 @@ export default function ImportsPanel({ batches, conflictRows }: ImportsPanelProp
             <div className="empty">
               <p className="empty-title">Aucun rapport sur la période</p>
               <p className="empty-text">
-                Les rapports TIKTAK reçus par e-mail apparaîtront ici avec leur état de traitement.
+                Les rapports TIKTAK (manuels ou par e-mail) apparaîtront ici avec leur état de traitement.
               </p>
             </div>
           )}

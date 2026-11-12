@@ -215,8 +215,8 @@ export const getSupervisorDashboardData = query({
     const cashOrders = allOrders.filter(
       (q) => q.paymentMethod === 'cash' && q.eligibilityStatus === 'eligible'
     );
-    const cardOrders = allOrders.filter(
-      (q) => q.paymentMethod === 'card' && q.eligibilityStatus === 'eligible'
+    const tpeOrders = allOrders.filter(
+      (q) => q.paymentMethod === 'tpe' && q.eligibilityStatus === 'eligible'
     );
 
     // If no orders exist (live mode), fallback to liveEntries
@@ -254,7 +254,7 @@ export const getSupervisorDashboardData = query({
 
     const cardOrderKeys = isLiveMode
       ? new Set(liveTpeEntries.map((entry) => normalizeCommandKey(entry.commandId)))
-      : new Set(cardOrders.map((order) => normalizeCommandKey(order.commandId)));
+      : new Set(tpeOrders.map((order) => normalizeCommandKey(order.commandId)));
 
     const liveTpe = await loadLiveTpeReceipts(ctx, targetDate, targetDate, cardOrderKeys);
     const approvedLiveTpe = liveTpe.filter(
@@ -267,7 +267,7 @@ export const getSupervisorDashboardData = query({
       : cashOrders.reduce((sum, o) => sum + o.amount, 0);
     const totalCardDue = isLiveMode
       ? liveTpeEntries.reduce((sum, o) => sum + o.amount, 0)
-      : cardOrders.reduce((sum, o) => sum + o.amount, 0);
+      : tpeOrders.reduce((sum, o) => sum + o.amount, 0);
 
     const totalCollected = collections.reduce((sum, c) => sum + c.amount, 0);
     const totalDeposited = deposits
@@ -296,7 +296,7 @@ export const getSupervisorDashboardData = query({
       isLiveMode,
       liveEntries,
       cashOrders,
-      cardOrders,
+      tpeOrders,
       collections
     );
 
@@ -370,7 +370,7 @@ export const getAdminDashboardData = query({
       .collect();
 
     const cashOrders = orders.filter((o) => o.paymentMethod === 'cash' && o.eligibilityStatus === 'eligible');
-    const cardOrders = orders.filter((o) => o.paymentMethod === 'card' && o.eligibilityStatus === 'eligible');
+    const tpeOrders = orders.filter((o) => o.paymentMethod === 'tpe' && o.eligibilityStatus === 'eligible');
 
     // In live mode, query liveEntries for the range
     const liveEntries = isLiveMode
@@ -390,14 +390,14 @@ export const getAdminDashboardData = query({
       ? liveEntries
           .filter((e) => e.paymentMethod === 'tpe')
           .reduce((s, e) => s + e.amount, 0)
-      : cardOrders.reduce((s, o) => s + o.amount, 0);
+      : tpeOrders.reduce((s, o) => s + o.amount, 0);
 
     const onlinePaymentExcluded = isLiveMode
       ? liveEntries
-          .filter((e) => e.paymentMethod === 'card')
+          .filter((e) => e.paymentMethod === 'online')
           .reduce((s, e) => s + e.amount, 0)
       : orders
-          .filter((o) => o.paymentMethod === 'online_payment')
+          .filter((o) => o.paymentMethod === 'online')
           .reduce((s, o) => s + o.amount, 0);
 
     const cardOrderKeys = isLiveMode
@@ -406,7 +406,7 @@ export const getAdminDashboardData = query({
             .filter((e) => e.paymentMethod === 'tpe')
             .map((e) => normalizeCommandKey(e.commandId))
         )
-      : new Set(cardOrders.map((order) => normalizeCommandKey(order.commandId)));
+      : new Set(tpeOrders.map((order) => normalizeCommandKey(order.commandId)));
 
     const liveTpe = await loadLiveTpeReceipts(ctx, from, to, cardOrderKeys);
     const approvedLiveTpe = liveTpe.filter(
@@ -434,7 +434,7 @@ export const getAdminDashboardData = query({
       isLiveMode,
       liveEntries,
       cashOrders,
-      cardOrders,
+      tpeOrders,
       collections
     );
 

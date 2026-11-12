@@ -85,7 +85,7 @@ async function createEntry(
   values: {
     commandId: string;
     amount: number;
-    paymentMethod: 'cash' | 'tpe' | 'card';
+    paymentMethod: 'cash' | 'tpe' | 'online';
     entryDate?: number;
   }
 ): Promise<Id<'liveEntries'>> {
@@ -154,9 +154,9 @@ describe('getRiderProfileData', () => {
       paymentMethod: 'tpe',
     });
     await createEntry(t, riderUserId, marketId, {
-      commandId: 'CMD-CARD',
+      commandId: 'CMD-ONLINE',
       amount: 5000,
-      paymentMethod: 'card',
+      paymentMethod: 'online',
     });
     await createEntry(t, riderUserId, marketId, {
       commandId: 'CMD-OLD',
@@ -187,8 +187,8 @@ describe('getRiderProfileData', () => {
       cardAmount: 5000,
     });
     expect(data?.liveEntries.map((entry) => entry.commandId).sort()).toEqual([
-      'CMD-CARD',
       'CMD-CASH',
+      'CMD-ONLINE',
       'CMD-TPE',
     ]);
     expect(data?.recentTpeReceipts).toHaveLength(1);

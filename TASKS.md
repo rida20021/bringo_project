@@ -24,9 +24,10 @@
 - [x] **Task 1.3: Zones Table.** Create `zones` table (name, marketIds[]).
 - [x] **Task 1.4: Rider-Markets Join Table.** Create `riderMarkets` table (riderId, marketId) and basic mutations (`assignMarketsToRider`, `getMyMarkets`).
 - [x] **Task 1.5: Attendance Table.** Create `attendance` table (riderId, date, status: worked/off/in/out/cumul, note). Index on riderId+date.
-- [x] **Task 1.6: Salary Tables.** Create `salaryPeriods`, `salaryDeductions`, and `riderDebts` tables per PRD §10.2.
+- [x] **Task 1.6: Salary Tables.** Create `salaryPeriods`, `salaryDeductions`, and `riderDebts` tables per PRD §10.2. `salaryDeductions` has `riderId: v.id('riders')`, `status: "pending" | "applied" | "cancelled"`, and optional `salaryPeriodId`. Indexes: `by_rider_status`, `by_period`.
 - [x] **Task 1.7: Deposits Table.** Create `deposits` table: marketId, date, cumulFromDate, cumulToDate, expectedAmount, depositedAmount, status, discrepancy, riderId, comment.
 - [x] **Task 1.8: Shifts Table.** Create `shifts` table (riderId, date, status: present/off/renfort/meal_box, targetMarketId). Index on riderId+date.
+- [x] **Task 1.9: Expenses Schema.** Create expenses table (amount, category, description, date, receiptFileId, status, createdBy). Index on date and status.
 
 ### Phase 2: The Financial Engine & Business Logic
 **Goal:** Build the math for payroll, hybrid negative debt, cumulative deposits, and shift access.
@@ -39,6 +40,7 @@
 - [ ] **Task 2.6: Cumulative Deposits (Cumul).** Detect `cumul`, prompt for `cumulFromDate`, sum expected amounts across the range, compute discrepancy.
 - [ ] **Task 2.7: Discrepancy Resolution.** Backend actions to Assign to rider (creates payslip deduction), Absorb (company loss), or Correct.
 - [ ] **Task 2.8: Renfort Access Logic.** Update the `getMyMarkets` backend query. If a rider has a `renfort` or `meal_box` shift for the current day, dynamically append the `targetMarketId` to their allowed markets for Live Entry.
+- [ ] **Task 2.9: Expense Mutations.** Implement createExpense (with file upload), approveExpense, rejectExpense, and getExpenses (aggregated for dashboard).
 
 ### Phase 3: Core UI & Operations
 **Goal:** Build the frontend screens for the Admin to manage HR, Payroll, Attendance, and Planning.
@@ -56,6 +58,8 @@
 - [ ] **Task 3.11: Payment Method Correction UI.** Inline dropdown in Global View to change `cash`/`carte`/`en_ligne`. Recalculates downstream math.
 - [ ] **Task 3.12: Admin Planning Grid UI.** Build `/admin/planning` with a weekly grid (rows = riders, columns = days). Allow inline editing of status (Present/Off/Renfort/Meal Box) and target markets for Renfort.
 - [ ] **Task 3.13: Rider Schedule View.** Add a "Mon Planning" tab to the Rider Mobile UI to show their weekly schedule (read-only for riders).
+- [ ] **Task 3.14: Supervisor Collection & Deposit UX.** Add a dynamic debt badge to the "Encaisser un livreur" card that updates when a rider is selected and as amounts are typed. Ensure the Bulk Bank Deposit card allows selecting multiple rider collections with a single receipt.
+- [ ] **Task 3.15: Expenses UI & Budget Tracking.** Build /admin/expenses list and creation form with <ReceiptUpload>. Add a visual progress bar for the monthly budget limit (e.g., 15,000 MAD).
 
 ### Phase 4: Dashboards & Global Search
 **Goal:** Bring all the new data together into the visual dashboards and search.
@@ -66,6 +70,7 @@
 - [ ] **Task 4.4: General Search (Omnibox).** `⌘K` shortcut. Auto-detects Command/Rider/Market/City. Routes to filtered Global View.
 - [ ] **Task 4.5: Global View Advanced Filters.** Multi-select (Rider, Market, City, Payment Method, Status). URL-synced.
 - [ ] **Task 4.6: Global View Inline Editing.** Edit payment method, rider assignment, and discrepancy resolution directly from the table.
+- [ ] **Task 4.7: Dashboard Expenses KPI.** Add the "Dépenses" KPI card to the dashboard and update charts to show expense breakdown by category.
 
 ### Phase 5: Admin Settings & Notifications
 **Goal:** Make the system configurable and automated.

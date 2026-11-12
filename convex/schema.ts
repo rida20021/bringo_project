@@ -149,13 +149,17 @@ export default defineSchema({
     .index('by_status', ['status']),
 
   salaryDeductions: defineTable({
-    salaryPeriodId: v.id('salaryPeriods'),
+    riderId: v.id('riders'),
+    salaryPeriodId: v.optional(v.id('salaryPeriods')),
     type: v.string(), // e.g., 'ecart_versement', 'avance', 'reparation'
     amount: v.number(), // positive integer centimes
     note: v.optional(v.string()),
     sourceRef: v.optional(v.string()), // ID of the linked deposit or order
+    status: v.union(v.literal('pending'), v.literal('applied'), v.literal('cancelled')),
     createdAt: v.number(),
-  }).index('by_salary_period', ['salaryPeriodId']),
+    createdBy: v.optional(v.id('users')),
+  }).index('by_rider_status', ['riderId', 'status'])
+    .index('by_period', ['salaryPeriodId']),
 
   riderDebts: defineTable({
     riderId: v.id('users'),
@@ -217,7 +221,7 @@ export default defineSchema({
     marketExternalId: v.string(),
     /** Integer centimes. */
     amount: v.number(),
-    paymentMethod: v.union(v.literal('cash'), v.literal('tpe'), v.literal('card')),
+    paymentMethod: v.union(v.literal('cash'), v.literal('tpe'), v.literal('online')),
     /** Start of the Casablanca day, so entries can be listed per day. */
     entryDate: v.number(),
     createdAt: v.number(),
@@ -339,7 +343,7 @@ export default defineSchema({
     deliveryDate: v.number(),
     riderId: v.id('riders'),
     rawRiderName: v.string(),
-    paymentMethod: v.union(v.literal('cash'), v.literal('card'), v.literal('online_payment')),
+    paymentMethod: v.union(v.literal('cash'), v.literal('tpe'), v.literal('online')),
     amount: v.number(),
     store: v.optional(v.string()),
     company: v.optional(v.string()),
@@ -528,4 +532,31 @@ export default defineSchema({
     gmailRefreshToken: v.optional(v.string()),
     gmailTokenExpiresAt: v.optional(v.number()),
   }),
+
+  expenses: defineTable({
+    marketId: v.optional(v.id('markets')),
+    amount: v.number(),                 // integer centimes
+    category: v.union(
+      v.literal('carburant'),
+      v.literal('reparation'),
+      v.literal('fournitures'),
+      v.literal('loyer'),
+      v.literal('autre')
+    ),
+    description: v.string(),
+    date: v.number(),                   // Casablanca timestamp
+    receiptFileId: v.id('_storage'),    // Convex file storage
+    status: v.union(
+      v.literal('pending'),
+      v.literal('approved'),
+      v.literal('rejected')
+    ),
+    createdBy: v.id('users'),
+    approvedBy: v.optional(v.id('users')),
+    approvedAt: v.optional(v.number()),
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_date', ['date'])
+    .index('by_status', ['status']),
 });

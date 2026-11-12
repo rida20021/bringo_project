@@ -217,7 +217,7 @@ describe('createLiveOrder', () => {
         commandId: 'CMD-BAD-2',
         marketId,
         amount: 5000,
-        paymentMethod: 'card',
+        paymentMethod: 'online',
         receipt: validReceiptFor(storageId),
       })
     ).rejects.toThrow(/do not carry a receipt/);

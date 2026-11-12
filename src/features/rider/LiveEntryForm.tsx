@@ -8,7 +8,7 @@ import { formatMAD, paymentMethodLabels } from '@/lib/format';
 import { parseAmountToCentimes } from '@/lib/money';
 import { toast } from 'sonner';
 
-type PaymentMethod = 'cash' | 'tpe' | 'card';
+type PaymentMethod = 'cash' | 'tpe' | 'online';
 type ReceiptKind = 'tpe' | 'bank_deposit';
 
 const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
@@ -20,7 +20,7 @@ const ALLOWED_RECEIPT_TYPES = new Set([
   'application/pdf',
 ]);
 
-const methods: PaymentMethod[] = ['cash', 'tpe', 'card'];
+const methods: PaymentMethod[] = ['cash', 'tpe', 'online'];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -235,7 +235,7 @@ export default function LiveEntryForm() {
           </div>
         </div>
 
-        {method !== 'card' ? (
+        {method !== 'online' ? (
           <label className="field">
             <span className="field-label">
               {method === 'tpe'

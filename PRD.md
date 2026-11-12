@@ -40,7 +40,7 @@ A single operational platform for Bringo's delivery business that:
 ## 4. Orders & Live Entries
 
 - Orders come from **TikTak Excel imports** (audit mode) and **rider live entries** (live mode).
-- Fields: `commandId`, `riderId`, `marketId`, `city`, `amount`, `paymentMethod` (`cash` | `carte` | `en_ligne`), `deliveryDate`, `eligibilityStatus`.
+- Fields: `commandId`, `riderId`, `marketId`, `city`, `amount`, `paymentMethod` (`cash` | `tpe` | `online`), `deliveryDate`, `eligibilityStatus`.
 - Live entries reconciled against orders → **exact match / mismatch / missing-live / live-only**.
 
 ---
@@ -81,14 +81,14 @@ open ──▶ assigned (to rider) ──▶ deducted (in payslip) ──▶ res
 
 ### 5.4 Payment Method Correction (any direction)
 
-From the Global View, admin can change any order's `paymentMethod` to **any** of `cash | carte | en_ligne`. The system then:
+From the Global View, admin can change any order's `paymentMethod` to **any** of `cash | tpe | online`. The system then:
 
-1. Recomputes **cash due / carte due / online** for the order.
+1. Recomputes **cash due / tpe due / online** for the order.
 2. Recomputes **deposit expectations** for affected markets.
 3. Adds / removes **discrepancies**.
 4. Logs the change in `auditLogs`.
 
-> **Example:** rider selected `carte` in the app but the customer paid cash → admin switches to `cash` → cash due rises, carte due falls, market deposit expectation rises accordingly.
+> **Example:** rider selected `tpe` in the app but the customer paid cash → admin switches to `cash` → cash due rises, tpe due falls, market deposit expectation rises accordingly.
 
 ---
 
@@ -260,28 +260,36 @@ salaryPeriods: {
   riderId,
   periodStart,
   periodEnd,
-  daysWorked,           // auto from attendance
-  dailyRate,            // from rider, admin-overridable
+  daysWorked,
+  dailyRate,
   grossSalary,          // daysWorked × dailyRate
-  deductions: [{ type, amount, note, sourceRef? }],
-  bonus: number,
-  netSalary,            // gross + bonus − Σ deductions
+  bonus,
+  netSalary,            // computed: gross + bonus − Σ applied deductions
   status: "draft" | "approved" | "paid",
   approvedAt?,
   approvedBy?,
   paidAt?,
   paymentMethod?,
-  carryOverFrom?: ref,  // if previous period net < 0
-  debtId?: ref,        // if consecutive negative → formal debt
+  carryOverFrom?: ref,
+  debtId?: ref,
 }
 
-riderDebts: {
+salaryDeductions: {
   riderId,
-  amount,
-  originPeriodId,
-  createdAt,
-  status: "open" | "settled" | "forgiven",
+  salaryPeriodId?,      // undefined while pending; set on payslip generation
+  type,                 // see §10.3 categories
+  amount,               // positive = deduction, negative = bonus/credit
   note?,
+  sourceRef?,           // depositId | orderId | auditId
+  status: "pending" | "applied" | "cancelled",
+  createdAt,
+  createdBy,
+}
+  .index("by_rider_status", ["riderId", "status"])
+  .index("by_period", ["salaryPeriodId"])
+
+riderDebts: {
+  ...
 }
 ```
 
@@ -322,18 +330,14 @@ When `netSalary < 0`, apply the hybrid rule:
 
 ## 11. Deposit Tracking
 
-### 11.1 Import from SV Excel
+### 11.1 Manual Deposit Entry (Replacing SV Excel)
 
-Upload `SV-2026.xlsx` → parse each market/day row:
-
-| Excel column | Maps to |
-|---|---|
-| Versement | `status` |
-| Mt à verser | `expectedAmount` |
-| Mt versé | `depositedAmount` |
-| Mt d'écart | `discrepancy` |
-| Livreur concerné | Fuzzy auto-suggest + "à lier" fallback (see §11.4) |
-| Commentaire | `comment` |
+Supervisors record bank deposits directly in the Web App. 
+- They select the Market.
+- They enter the `depositedAmount` and upload a receipt.
+- The system auto-calculates `expectedAmount` based on cash collections for that market.
+- `discrepancy` = `depositedAmount` - `expectedAmount`.
+- Status is set to `effectue` (if exact), `cumul` (if catching up), or `non_effectue`.|
 
 ### 11.2 Cumulative Deposits
 
@@ -348,17 +352,18 @@ When `status = cumul`:
 
 Assign to rider (creates a payslip deduction), absorb, or correct (audit-logged).
 
-### 11.4 "Livreur concerné" Matching — Fuzzy + Fallback
+### 11.4 Supervisor Cash Collection & Deposit UI
 
-On import, the system runs a fuzzy match against `riders.fullName` (Levenshtein + token overlap):
+**Dynamic Debt Badge (Encaisser un livreur):**
+- The Supervisor selects a Rider from a searchable dropdown.
+- Immediately upon selection, the card displays the Rider's current outstanding cash debt (e.g., "Dette: 1,250 MAD") in the top right corner.
+- As the Supervisor types the collected amount into the input field, the badge dynamically updates to show the remaining balance (e.g., "Reste: 750 MAD").
+- The Supervisor saves the collection, which transfers the debt from the Rider to the Supervisor's Vault.
 
-| Confidence | Outcome |
-|---|---|
-| ≥ 85 % | Auto-linked, shown as "suggestion" (admin can override). |
-| 50–85 % | Suggested but flagged **amber**; admin confirms. |
-| < 50 % or ambiguous | Marked **`to_link`** (orange badge); admin links manually in the import review panel. |
-
-Nothing blocks the import; admin can fix at any time.
+**Bulk Bank Deposit (Dépôt bancaire groupé):**
+- The Supervisor checks off the specific collections (from multiple riders) they are depositing at the bank.
+- They enter the total deposit amount and upload one receipt.
+- The system calculates the total `expectedAmount` for the selected collections and flags any discrepancy instantly before submission.
 
 ---
 
@@ -383,6 +388,7 @@ Nothing blocks the import; admin can fix at any time.
 | Encaissé | Σ cash collections | `/admin/dashboard/cash` |
 | Déposé | Σ deposits | `/admin/dashboard/cash` |
 | Écarts | Count + total MAD | `/admin/reports/reconciliation` |
+| Dépenses | Σ approved expenses (period) | `/admin/dashboard/cash` |
 | Salaires à payer | Σ draft + approved payslips | `/admin/dashboard/salaries` |
 | Livreurs actifs | Count | `/admin/riders` |
 
@@ -548,3 +554,36 @@ shifts: {
   createdBy: Id<'users'>,
   updatedAt: number,
 }
+
+## 20. Expense Tracking (Caisse de Dépense)
+
+### 20.1 Concept
+The company allocates a monthly operational budget (typically 12,000 to 15,000 MAD) for daily expenses. Every expense must be logged with a proof of purchase (receipt, invoice, or product photo) to ensure financial compliance and track the remaining budget.
+
+### 20.2 Data Model
+```ts
+expenses: {
+  marketId?: Id<'markets'>,       // Optional: if the expense is tied to a specific market
+  amount: number,                 // integer centimes
+  category: "carburant" | "reparation" | "fournitures" | "loyer" | "autre",
+  description: string,            // e.g., "Achat 4 pneus moto"
+  date: number,                   // Casablanca timestamp
+  receiptFileId: Id<'_storage'>,  // Convex file storage for the receipt/photo
+  status: "pending" | "approved" | "rejected",
+  createdBy: Id<'users'>,
+  approvedBy?: Id<'users'>,
+  approvedAt?: number,
+  rejectionReason?: string,
+  createdAt: number,
+}
+.index('by_date', ['date'])
+.index('by_status', ['status'])
+```
+
+### 20.3 UI & Workflow
+
+- Expense Entry: A form allowing Admin/Supervisors to enter the amount, select a category, add a description, and upload a receipt/photo.
+
+- Budget Bar: A visual progress bar showing Total Approved Expenses this Month vs. Monthly Limit (Configurable in Settings).
+
+- Approval Queue: Admin can review pending expenses, view the receipt, and approve or reject them.

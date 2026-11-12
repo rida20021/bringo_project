@@ -6,7 +6,7 @@ import { requireRider, requireSupervisor } from './lib/auth';
 import { liveEntryDateCasablanca, startOfDayCasablanca } from './lib/dates';
 import { validateReceiptFile } from './receipts';
 
-const livePaymentMethod = v.union(v.literal('cash'), v.literal('tpe'), v.literal('card'));
+const livePaymentMethod = v.union(v.literal('cash'), v.literal('tpe'), v.literal('online'));
 const receiptKind = v.union(v.literal('tpe'), v.literal('bank_deposit'));
 
 /** 1,000,000.00 MAD — a sanity ceiling far above any real delivery. */
@@ -18,7 +18,7 @@ export const getOrders = query({
   args: {
     deliveryDate: v.optional(v.number()),
     riderId: v.optional(v.id('riders')),
-    paymentMethod: v.optional(v.union(v.literal('cash'), v.literal('card'), v.literal('online_payment'))),
+    paymentMethod: v.optional(v.union(v.literal('cash'), v.literal('tpe'), v.literal('online'))),
     eligibilityStatus: v.optional(
       v.union(v.literal('eligible'), v.literal('excluded_payment_method'), v.literal('quarantined'))
     ),
@@ -59,7 +59,7 @@ export const getRiderBalances = query({
       .filter((q) => {
         const conditions = [
           q.eq(q.field('eligibilityStatus'), 'eligible'),
-          q.or(q.eq(q.field('paymentMethod'), 'cash'), q.eq(q.field('paymentMethod'), 'card')),
+          q.or(q.eq(q.field('paymentMethod'), 'cash'), q.eq(q.field('paymentMethod'), 'tpe')),
         ];
         if (targetDate !== undefined) conditions.push(q.eq(q.field('deliveryDate'), targetDate));
         return q.and(...conditions);
@@ -85,7 +85,7 @@ export const getRiderBalances = query({
       const rider = riderMap.get(key)!;
       rider.orders.push(order);
       if (order.paymentMethod === 'cash') rider.cashDue += order.amount;
-      else if (order.paymentMethod === 'card') rider.cardDue += order.amount;
+      else if (order.paymentMethod === 'tpe') rider.cardDue += order.amount;
     }
 
     return Array.from(riderMap.values());
@@ -138,8 +138,8 @@ export const createLiveOrder = mutation({
     if (args.paymentMethod === 'cash' && args.receipt && args.receipt.kind !== 'bank_deposit') {
       throw new Error('Cash payments can only carry a bank deposit receipt');
     }
-    if (args.paymentMethod === 'card' && args.receipt) {
-      throw new Error('Card payments do not carry a receipt');
+    if (args.paymentMethod === 'online' && args.receipt) {
+      throw new Error('Online payments do not carry a receipt');
     }
 
     const now = Date.now();

@@ -40,6 +40,6 @@ describe('paymentMethodLabels', () => {
   it('has a French label per live payment method', () => {
     expect(paymentMethodLabels.cash).toBe('Espèces');
     expect(paymentMethodLabels.tpe).toBe('TPE');
-    expect(paymentMethodLabels.card).toBe('Carte en ligne');
+    expect(paymentMethodLabels.online).toBe('En ligne');
   });
 });

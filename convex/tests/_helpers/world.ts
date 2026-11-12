@@ -105,7 +105,7 @@ export async function addOrder(
   commandId: string,
   amount: number,
   deliveryDate = world.reportDate,
-  paymentMethod: 'cash' | 'card' | 'online_payment' = 'cash'
+  paymentMethod: 'cash' | 'tpe' | 'online' = 'cash'
 ): Promise<Id<'orders'>> {
   return t.run(async (ctx) =>
     ctx.db.insert('orders', {
@@ -187,7 +187,7 @@ export async function addLiveEntry(
   commandId: string,
   amount: number,
   entryDate = world.reportDate,
-  paymentMethod: 'cash' | 'tpe' | 'card' = 'cash'
+  paymentMethod: 'cash' | 'tpe' | 'online' = 'cash'
 ): Promise<Id<'liveEntries'>> {
   return t.run(async (ctx) =>
     ctx.db.insert('liveEntries', {

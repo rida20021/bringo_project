@@ -32,11 +32,10 @@ interface ExcelCommandLegs {
  */
 function representativeOrder(
   group: ExcelCommandLegs,
-  paymentMethod: 'cash' | 'tpe' | 'card'
+  paymentMethod: 'cash' | 'tpe' | 'online'
 ): Doc<'orders'> {
-  const expectedMethod = paymentMethod === 'tpe' ? 'card' : paymentMethod;
   return (
-    group.orders.find((order) => order.paymentMethod === expectedMethod) ?? group.orders[0]
+    group.orders.find((order) => order.paymentMethod === paymentMethod) ?? group.orders[0]
   );
 }
 

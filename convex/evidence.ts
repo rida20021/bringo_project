@@ -20,7 +20,7 @@ export const createTpeReceipt = mutation({
     for (const alloc of args.allocations) {
       const order = await ctx.db.get(alloc.orderId);
       if (!order) throw new Error(`Order ${alloc.orderId} not found`);
-      if (order.paymentMethod !== 'card') throw new Error(`Order ${alloc.orderId} is not a card order`);
+      if (order.paymentMethod !== 'tpe') throw new Error(`Order ${alloc.orderId} is not a tpe order`);
       if (order.eligibilityStatus !== 'eligible') throw new Error(`Order ${alloc.orderId} not eligible`);
       totalAllocated += alloc.allocatedAmount;
     }

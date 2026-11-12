@@ -82,7 +82,7 @@ describe('matching engine', () => {
 
     await addLiveEntry(t, world, 'CMD-SPLIT-MATCH', 15000);
     await addOrder(t, world, 'CMD-SPLIT-MATCH', 10000, DAY_A, 'cash');
-    await addOrder(t, world, 'CMD-SPLIT-MATCH', 5000, DAY_A, 'card');
+    await addOrder(t, world, 'CMD-SPLIT-MATCH', 5000, DAY_A, 'tpe');
 
     await addLiveEntry(t, world, 'CMD-SPLIT-MISMATCH', 14000, DAY_A, 'tpe');
     await addOrder(t, world, 'CMD-SPLIT-MISMATCH', 10000, DAY_A, 'cash');
@@ -92,7 +92,7 @@ describe('matching engine', () => {
       'CMD-SPLIT-MISMATCH',
       5000,
       DAY_A,
-      'card'
+      'tpe'
     );
 
     const admin = adminClient(t, world);
